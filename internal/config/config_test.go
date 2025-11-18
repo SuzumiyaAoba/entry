@@ -29,6 +29,7 @@ var _ = Describe("LoadConfig", func() {
 	Context("when config file exists", func() {
 		BeforeEach(func() {
 			configContent := `
+version: "1"
 rules:
   - extensions: [txt]
     command: "echo text"
@@ -43,6 +44,7 @@ rules:
 			cfg, err := LoadConfig(configPath)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cfg).NotTo(BeNil())
+			Expect(cfg.Version).To(Equal("1"))
 			Expect(cfg.Rules).To(HaveLen(2))
 
 			foundRegex := false

@@ -15,7 +15,8 @@ type Rule struct {
 }
 
 type Config struct {
-	Rules []Rule `yaml:"rules"`
+	Version string `yaml:"version"`
+	Rules   []Rule `yaml:"rules"`
 }
 
 func LoadConfig(path string) (*Config, error) {
