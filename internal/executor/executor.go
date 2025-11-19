@@ -25,10 +25,20 @@ type ExecutionOptions struct {
 	Terminal   bool
 }
 
-var cmdBuf bytes.Buffer
+type Executor struct {
+	Out    io.Writer
+	DryRun bool
+}
 
-func Execute(out io.Writer, commandTmpl string, file string, opts ExecutionOptions, dryRun bool) error {
-	cmdBuf.Reset()
+func NewExecutor(out io.Writer, dryRun bool) *Executor {
+	return &Executor{
+		Out:    out,
+		DryRun: dryRun,
+	}
+}
+
+func (e *Executor) Execute(commandTmpl string, file string, opts ExecutionOptions) error {
+	var cmdBuf bytes.Buffer
 	tmpl, err := template.New("command").Parse(commandTmpl)
 	if err != nil {
 		return fmt.Errorf("failed to parse command template: %w", err)
@@ -58,12 +68,12 @@ func Execute(out io.Writer, commandTmpl string, file string, opts ExecutionOptio
 
 	cmdStr := cmdBuf.String()
 
-	if dryRun {
+	if e.DryRun {
 		bg := ""
 		if opts.Background {
 			bg = " (background)"
 		}
-		fmt.Fprintf(out, "%s%s\n", cmdStr, bg)
+		fmt.Fprintf(e.Out, "%s%s\n", cmdStr, bg)
 		return nil
 	}
 
@@ -87,7 +97,7 @@ func Execute(out io.Writer, commandTmpl string, file string, opts ExecutionOptio
 	}
 
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = out
+	cmd.Stdout = e.Out
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
@@ -97,15 +107,15 @@ func Execute(out io.Writer, commandTmpl string, file string, opts ExecutionOptio
 	return nil
 }
 
-func ExecuteCommand(out io.Writer, command string, args []string, dryRun bool) error {
-	if dryRun {
-		fmt.Fprintf(out, "%s %s\n", command, strings.Join(args, " "))
+func (e *Executor) ExecuteCommand(command string, args []string) error {
+	if e.DryRun {
+		fmt.Fprintf(e.Out, "%s %s\n", command, strings.Join(args, " "))
 		return nil
 	}
 
 	cmd := exec.Command(command, args...)
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = out
+	cmd.Stdout = e.Out
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
@@ -115,7 +125,7 @@ func ExecuteCommand(out io.Writer, command string, args []string, dryRun bool) e
 	return nil
 }
 
-func OpenSystem(out io.Writer, path string, dryRun bool) error {
+func (e *Executor) OpenSystem(path string) error {
 	var cmdName string
 	var args []string
 
@@ -131,14 +141,14 @@ func OpenSystem(out io.Writer, path string, dryRun bool) error {
 		args = []string{path}
 	}
 
-	if dryRun {
-		fmt.Fprintf(out, "%s %s\n", cmdName, strings.Join(args, " "))
+	if e.DryRun {
+		fmt.Fprintf(e.Out, "%s %s\n", cmdName, strings.Join(args, " "))
 		return nil
 	}
 
 	cmd := exec.Command(cmdName, args...)
 	cmd.Stdin = nil // Detach stdin for openers?
-	cmd.Stdout = out
+	cmd.Stdout = e.Out
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
+	os_exec "os/exec"
 	"strings"
 
 	"github.com/SuzumiyaAoba/entry/internal/config"
@@ -86,9 +86,12 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("error loading config: %w", err)
 		}
 
+		// Initialize Executor
+		exec := executor.NewExecutor(cmd.OutOrStdout(), dryRun)
+
 		// 1. Try to match a specific rule if single argument
 		if len(commandArgs) == 1 {
-			rule, err := matcher.Match(cfg.Rules, "", commandArgs[0])
+			rule, err := matcher.Match(cfg.Rules, commandArgs[0])
 			if err != nil {
 				return fmt.Errorf("error matching rule: %w", err)
 			}
@@ -97,7 +100,7 @@ var rootCmd = &cobra.Command{
 					Background: rule.Background,
 					Terminal:   rule.Terminal,
 				}
-				return executor.Execute(cmd.OutOrStdout(), rule.Command, commandArgs[0], opts, dryRun)
+				return exec.Execute(rule.Command, commandArgs[0], opts)
 			}
 
 			// Check if it is a URL or File
@@ -108,16 +111,16 @@ var rootCmd = &cobra.Command{
 			
 			if isURL {
 				if cfg.DefaultCommand != "" {
-					return executor.Execute(cmd.OutOrStdout(), cfg.DefaultCommand, commandArgs[0], executor.ExecutionOptions{}, dryRun)
+					return exec.Execute(cfg.DefaultCommand, commandArgs[0], executor.ExecutionOptions{})
 				}
-				return executor.OpenSystem(cmd.OutOrStdout(), commandArgs[0], dryRun)
+				return exec.OpenSystem(commandArgs[0])
 			}
 
 			if _, err := os.Stat(commandArgs[0]); err == nil {
 				if cfg.DefaultCommand != "" {
-					return executor.Execute(cmd.OutOrStdout(), cfg.DefaultCommand, commandArgs[0], executor.ExecutionOptions{}, dryRun)
+					return exec.Execute(cfg.DefaultCommand, commandArgs[0], executor.ExecutionOptions{})
 				}
-				return executor.OpenSystem(cmd.OutOrStdout(), commandArgs[0], dryRun)
+				return exec.OpenSystem(commandArgs[0])
 			}
 		}
 
@@ -127,16 +130,16 @@ var rootCmd = &cobra.Command{
 		// 2. Check aliases
 		if alias, ok := cfg.Aliases[command]; ok {
 			command = alias
-			return executor.ExecuteCommand(cmd.OutOrStdout(), command, cmdArgs, dryRun)
+			return exec.ExecuteCommand(command, cmdArgs)
 		}
 
 		// 3. Fallback to command execution
 		// Check if command exists in PATH
-		if _, err := exec.LookPath(command); err != nil {
+		if _, err := os_exec.LookPath(command); err != nil {
 			// Command not found.
 			// If single argument and default command exists, assume it's a new file and use default command.
 			if len(commandArgs) == 1 && cfg.DefaultCommand != "" {
-				return executor.Execute(cmd.OutOrStdout(), cfg.DefaultCommand, commandArgs[0], executor.ExecutionOptions{}, dryRun)
+				return exec.Execute(cfg.DefaultCommand, commandArgs[0], executor.ExecutionOptions{})
 			}
 			// If no default command, or multiple args, let ExecuteCommand fail (or return the LookPath error)
 			// Actually, ExecuteCommand will try to run it and fail.
@@ -146,7 +149,7 @@ var rootCmd = &cobra.Command{
 			// So if LookPath fails, we MUST use default_command if applicable.
 		}
 
-		return executor.ExecuteCommand(cmd.OutOrStdout(), command, cmdArgs, dryRun)
+		return exec.ExecuteCommand(command, cmdArgs)
 	},
 }
 

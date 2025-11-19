@@ -11,7 +11,7 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 )
 
-func Match(rules []config.Rule, defaultCommand string, filename string) (*config.Rule, error) {
+func Match(rules []config.Rule, filename string) (*config.Rule, error) {
 
 	// Check Scheme
 	u, err := url.Parse(filename)
@@ -90,10 +90,6 @@ func Match(rules []config.Rule, defaultCommand string, filename string) (*config
 				return &rule, nil
 			}
 		}
-	}
-
-	if defaultCommand != "" {
-		return &config.Rule{Command: defaultCommand}, nil
 	}
 
 	return nil, nil
