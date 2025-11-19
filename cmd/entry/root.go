@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/SuzumiyaAoba/entry/internal/config"
 	"github.com/SuzumiyaAoba/entry/internal/executor"
@@ -24,26 +27,102 @@ var rootCmd = &cobra.Command{
 	Use:   "entry <file>",
 	Short: "Entry is a CLI file association tool",
 	Long:  `Entry allows you to execute specific commands based on file extensions or regex patterns matched against a provided file argument.`,
-	Args:  cobra.MinimumNArgs(1),
+	Args:               cobra.MinimumNArgs(1),
+	DisableFlagParsing: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Manual flag parsing
+		var commandArgs []string
+		for i := 0; i < len(args); i++ {
+			arg := args[i]
+			if arg == "--dry-run" {
+				dryRun = true
+				continue
+			}
+			if arg == "--config" {
+				if i+1 < len(args) {
+					cfgFile = args[i+1]
+					i++ // Skip value
+					continue
+				} else {
+					return fmt.Errorf("flag needs an argument: --config")
+				}
+			}
+			if strings.HasPrefix(arg, "--config=") {
+				cfgFile = strings.TrimPrefix(arg, "--config=")
+				continue
+			}
+			// Stop parsing at first non-flag or "--"
+			if arg == "--" {
+				commandArgs = args[i+1:]
+				break
+			}
+			if !strings.HasPrefix(arg, "-") {
+				commandArgs = args[i:]
+				break
+			}
+			// If we encounter an unknown flag before the command, what do we do?
+			// For now, assume it's part of the command if it looks like a flag but we don't know it?
+			// But we are in DisableFlagParsing, so we are the parser.
+			// If we see "-la" and we haven't seen the command yet, it's ambiguous.
+			// But usually `entry -la` is invalid if -la is not an entry flag.
+			// However, `entry ls -la` -> `ls` is first non-flag.
+			// What if `entry -v` (unknown flag) `ls`?
+			// Let's assume all flags before the first positional arg MUST be entry flags.
+			// If we hit a flag we don't know, and we haven't found command yet, it's an error OR it belongs to the command?
+			// If `entry` is a wrapper, maybe we should be strict about entry flags.
+			// But wait, `entry ls -la`. `ls` is not a flag.
+			// So we loop until we find a non-flag argument.
+			// That argument is the start of the command.
+			commandArgs = args[i:]
+			break
+		}
+
+		if len(commandArgs) == 0 {
+			return fmt.Errorf("requires at least 1 argument")
+		}
+
 		cfg, err := config.LoadConfig(cfgFile)
 		if err != nil {
 			return fmt.Errorf("error loading config: %w", err)
 		}
 
 		// 1. Try to match a specific rule if single argument
-		if len(args) == 1 {
-			rule, err := matcher.Match(cfg.Rules, "", args[0])
+		if len(commandArgs) == 1 {
+			rule, err := matcher.Match(cfg.Rules, "", commandArgs[0])
 			if err != nil {
 				return fmt.Errorf("error matching rule: %w", err)
 			}
 			if rule != nil {
-				return executor.Execute(cmd.OutOrStdout(), rule.Command, args[0], dryRun)
+				opts := executor.ExecutionOptions{
+					Background: rule.Background,
+					Terminal:   rule.Terminal,
+				}
+				return executor.Execute(cmd.OutOrStdout(), rule.Command, commandArgs[0], opts, dryRun)
+			}
+
+			// Check if it is a URL or File
+			isURL := false
+			if u, err := url.Parse(commandArgs[0]); err == nil && u.Scheme != "" {
+				isURL = true
+			}
+			
+			if isURL {
+				if cfg.DefaultCommand != "" {
+					return executor.Execute(cmd.OutOrStdout(), cfg.DefaultCommand, commandArgs[0], executor.ExecutionOptions{}, dryRun)
+				}
+				return executor.OpenSystem(cmd.OutOrStdout(), commandArgs[0], dryRun)
+			}
+
+			if _, err := os.Stat(commandArgs[0]); err == nil {
+				if cfg.DefaultCommand != "" {
+					return executor.Execute(cmd.OutOrStdout(), cfg.DefaultCommand, commandArgs[0], executor.ExecutionOptions{}, dryRun)
+				}
+				return executor.OpenSystem(cmd.OutOrStdout(), commandArgs[0], dryRun)
 			}
 		}
 
-		command := args[0]
-		cmdArgs := args[1:]
+		command := commandArgs[0]
+		cmdArgs := commandArgs[1:]
 
 		// 2. Check aliases
 		if alias, ok := cfg.Aliases[command]; ok {
@@ -51,12 +130,22 @@ var rootCmd = &cobra.Command{
 			return executor.ExecuteCommand(cmd.OutOrStdout(), command, cmdArgs, dryRun)
 		}
 
-		// 3. If single argument and default command exists, use it
-		if len(args) == 1 && cfg.DefaultCommand != "" {
-			return executor.Execute(cmd.OutOrStdout(), cfg.DefaultCommand, args[0], dryRun)
+		// 3. Fallback to command execution
+		// Check if command exists in PATH
+		if _, err := exec.LookPath(command); err != nil {
+			// Command not found.
+			// If single argument and default command exists, assume it's a new file and use default command.
+			if len(commandArgs) == 1 && cfg.DefaultCommand != "" {
+				return executor.Execute(cmd.OutOrStdout(), cfg.DefaultCommand, commandArgs[0], executor.ExecutionOptions{}, dryRun)
+			}
+			// If no default command, or multiple args, let ExecuteCommand fail (or return the LookPath error)
+			// Actually, ExecuteCommand will try to run it and fail.
+			// But we can return the LookPath error directly to be helpful, or proceed to ExecuteCommand to let it fail naturally.
+			// Let's proceed to ExecuteCommand so it handles dryRun printing etc?
+			// But dryRun prints the command. If we want to print default_command in dryRun, we must decide HERE.
+			// So if LookPath fails, we MUST use default_command if applicable.
 		}
 
-		// 4. Fallback to command execution
 		return executor.ExecuteCommand(cmd.OutOrStdout(), command, cmdArgs, dryRun)
 	},
 }

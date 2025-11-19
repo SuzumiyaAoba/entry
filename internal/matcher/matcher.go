@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -11,12 +12,10 @@ import (
 )
 
 func Match(rules []config.Rule, defaultCommand string, filename string) (*config.Rule, error) {
-	ext := strings.ToLower(filepath.Ext(filename))
-	// Remove dot from extension if present for comparison, or keep it?
-	// Usually config might have ".txt" or "txt". Let's handle both or assume one.
-	// Let's assume config has "txt" (no dot) for simplicity, or handle both.
-	// Better: trim dot from file ext.
-	ext = strings.TrimPrefix(ext, ".")
+
+	// Check Scheme
+	u, err := url.Parse(filename)
+	isURL := err == nil && u.Scheme != ""
 
 	for _, rule := range rules {
 		// Check OS
@@ -33,10 +32,31 @@ func Match(rules []config.Rule, defaultCommand string, filename string) (*config
 			}
 		}
 
-		// Check extensions
-		for _, ruleExt := range rule.Extensions {
-			if strings.ToLower(ruleExt) == ext {
+		// Check Scheme
+		if rule.Scheme != "" {
+			if isURL && strings.ToLower(u.Scheme) == strings.ToLower(rule.Scheme) {
 				return &rule, nil
+			}
+		}
+
+		// Check extensions (only if not a URL, or if URL has extension?)
+		// URLs can have extensions (e.g. image.png).
+		// But if it's a URL, we might want to prioritize Scheme or Regex.
+		// Let's check extensions for URLs too.
+		if len(rule.Extensions) > 0 {
+			// For URL, get path extension
+			var pathExt string
+			if isURL {
+				pathExt = filepath.Ext(u.Path)
+			} else {
+				pathExt = filepath.Ext(filename)
+			}
+			pathExt = strings.ToLower(strings.TrimPrefix(pathExt, "."))
+
+			for _, ruleExt := range rule.Extensions {
+				if strings.ToLower(ruleExt) == pathExt {
+					return &rule, nil
+				}
 			}
 		}
 
@@ -51,8 +71,9 @@ func Match(rules []config.Rule, defaultCommand string, filename string) (*config
 			}
 		}
 
-		// Check MIME type
-		if rule.Mime != "" {
+		// Check MIME type (Only for files, unless we fetch URL?)
+		// Skip MIME check for URLs for now
+		if rule.Mime != "" && !isURL {
 			mtype, err := mimetype.DetectFile(filename)
 			if err != nil {
 				// If file cannot be read, ignore MIME match? Or return error?

@@ -12,7 +12,10 @@ type Rule struct {
 	Extensions []string `yaml:"extensions,omitempty"`
 	Regex      string   `yaml:"regex,omitempty"`
 	Mime       string   `yaml:"mime,omitempty"`
+	Scheme     string   `yaml:"scheme,omitempty"`
 	OS         []string `yaml:"os,omitempty"`
+	Background bool     `yaml:"background,omitempty"`
+	Terminal   bool     `yaml:"terminal,omitempty"`
 	Command    string   `yaml:"command"`
 }
 

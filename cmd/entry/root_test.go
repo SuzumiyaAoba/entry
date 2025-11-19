@@ -70,7 +70,7 @@ rules:
 	Context("with default command", func() {
 		BeforeEach(func() {
 			configContent := `
-default_command: vim
+default_command: vim {{.File}}
 rules: []
 `
 			err := os.WriteFile(configFile, []byte(configContent), 0644)
@@ -85,6 +85,48 @@ rules: []
 		})
 
 		It("should execute command for multiple arguments", func() {
+			rootCmd.SetArgs([]string{"--config", configFile, "--dry-run", "ls", "-la"})
+			err := rootCmd.Execute()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("ls -la"))
+		})
+	})
+
+	Context("with system fallback", func() {
+		BeforeEach(func() {
+			configContent := `
+rules: []
+`
+			err := os.WriteFile(configFile, []byte(configContent), 0644)
+			Expect(err).NotTo(HaveOccurred())
+			// Create a dummy file for fallback test
+			err = os.WriteFile("fallback.txt", []byte("content"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			os.Remove("fallback.txt")
+		})
+
+		It("should use system opener for URL", func() {
+			rootCmd.SetArgs([]string{"--config", configFile, "--dry-run", "https://google.com"})
+			err := rootCmd.Execute()
+			Expect(err).NotTo(HaveOccurred())
+			// Expect "open https://google.com" or "xdg-open https://google.com" depending on OS
+			// But since we are in test, we can't easily predict OS command string without runtime check.
+			// However, OpenSystem prints cmdName + args.
+			// Let's just check it contains the URL.
+			Expect(outBuf.String()).To(ContainSubstring("https://google.com"))
+		})
+
+		It("should use system opener for existing file", func() {
+			rootCmd.SetArgs([]string{"--config", configFile, "--dry-run", "fallback.txt"})
+			err := rootCmd.Execute()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("fallback.txt"))
+		})
+
+		It("should execute as command if not file/URL", func() {
 			rootCmd.SetArgs([]string{"--config", configFile, "--dry-run", "ls", "-la"})
 			err := rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())

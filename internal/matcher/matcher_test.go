@@ -43,8 +43,9 @@ var _ = Describe("Match", func() {
 				Command: "echo log",
 			},
 			{
-				Mime:    "image/.*",
-				Command: "echo image",
+				Mime:       "image/.*",
+				Extensions: []string{"png"},
+				Command:    "echo image",
 			},
 			{
 				Extensions: []string{"go"},
@@ -59,6 +60,14 @@ var _ = Describe("Match", func() {
 				Extensions: []string{"bat"},
 				OS:         []string{"otheros"},
 				Command:    "echo bat",
+			},
+			{
+				Scheme:  "https",
+				Command: "open browser",
+			},
+			{
+				Scheme:  "mailto",
+				Command: "open mail",
 			},
 		}
 	})
@@ -100,5 +109,9 @@ var _ = Describe("Match", func() {
 		Entry("No match OS mismatch", "script.bat", "echo default", false),
 		Entry("No match", "unknown.dat", "echo default", false),
 		Entry("Case insensitive extension", "FILE.TXT", "echo text", false),
+		Entry("Match URL scheme https", "https://google.com", "open browser", false),
+		Entry("Match URL scheme mailto", "mailto:user@example.com", "open mail", false),
+		Entry("Match URL extension png", "http://example.com/image.png", "echo image", false),
+		Entry("Match URL regex", "http://example.com/foo.log", "echo log", false),
 	)
 })
