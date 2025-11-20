@@ -177,4 +177,88 @@ rules:
 			Expect(err.Error()).To(ContainSubstring("unknown config subcommand"))
 		})
 	})
+
+	Describe("runConfigRemove", func() {
+		BeforeEach(func() {
+			cfgFile = configFile
+			cfg := &config.Config{
+				Version: "1",
+				Rules: []config.Rule{
+					{Name: "Rule 1", Command: "cmd1"},
+					{Name: "Rule 2", Command: "cmd2"},
+				},
+			}
+			err := config.SaveConfig(cfgFile, cfg)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			cfgFile = ""
+		})
+
+		It("should remove rule by index", func() {
+			err := runConfigRemove("1")
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg, err := config.LoadConfig(cfgFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Rules).To(HaveLen(1))
+			Expect(cfg.Rules[0].Name).To(Equal("Rule 2"))
+		})
+
+		It("should return error for invalid index format", func() {
+			err := runConfigRemove("abc")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid index"))
+		})
+
+		It("should return error for index out of range", func() {
+			err := runConfigRemove("3")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("index out of range"))
+		})
+
+		It("should return error for index 0", func() {
+			err := runConfigRemove("0")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("index out of range"))
+		})
+	})
+
+	Describe("runConfigSetDefault", func() {
+		BeforeEach(func() {
+			cfgFile = configFile
+			cfg := &config.Config{
+				Version:        "1",
+				DefaultCommand: "old_default",
+				Default:        "alias_default",
+			}
+			err := config.SaveConfig(cfgFile, cfg)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			cfgFile = ""
+		})
+
+		It("should update default command", func() {
+			err := runConfigSetDefault("new_default")
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg, err := config.LoadConfig(cfgFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.DefaultCommand).To(Equal("new_default"))
+			Expect(cfg.Default).To(BeEmpty()) // Should clear alias
+		})
+
+		It("should create config if not exists", func() {
+			cfgFile = filepath.Join(tmpDir, "new_config_default.yml")
+			err := runConfigSetDefault("default_cmd")
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg, err := config.LoadConfig(cfgFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.DefaultCommand).To(Equal("default_cmd"))
+		})
+	})
 })

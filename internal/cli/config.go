@@ -53,7 +53,8 @@ func init() {
 	configAddCmd.MarkFlagRequired("cmd")
 
 	configCmd.AddCommand(configInitCmd)
-	configCmd.AddCommand(configCheckCmd)
+	configCmd.AddCommand(configRemoveCmd)
+	configCmd.AddCommand(configSetDefaultCmd)
 }
 
 var configInitCmd = &cobra.Command{
@@ -69,6 +70,24 @@ var configCheckCmd = &cobra.Command{
 	Short: "Check configuration validity",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runConfigCheck()
+	},
+}
+
+var configRemoveCmd = &cobra.Command{
+	Use:   "remove <index>",
+	Short: "Remove a rule by index (1-based)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runConfigRemove(args[0])
+	},
+}
+
+var configSetDefaultCmd = &cobra.Command{
+	Use:   "set-default <command>",
+	Short: "Set default command",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runConfigSetDefault(args[0])
 	},
 }
 
@@ -119,6 +138,16 @@ func handleConfigCommand(args []string) error {
 		return runConfigInit()
 	case "check":
 		return runConfigCheck()
+	case "remove":
+		if len(subargs) != 1 {
+			return fmt.Errorf("accepts 1 arg(s), received %d", len(subargs))
+		}
+		return runConfigRemove(subargs[0])
+	case "set-default":
+		if len(subargs) != 1 {
+			return fmt.Errorf("accepts 1 arg(s), received %d", len(subargs))
+		}
+		return runConfigSetDefault(subargs[0])
 	default:
 		return fmt.Errorf("unknown config subcommand: %s", subcmd)
 	}
@@ -230,5 +259,60 @@ func runConfigCheck() error {
 	}
 
 	fmt.Println("Configuration is valid")
+	return nil
+}
+
+func runConfigRemove(indexStr string) error {
+	var index int
+	if _, err := fmt.Sscanf(indexStr, "%d", &index); err != nil {
+		return fmt.Errorf("invalid index: %s", indexStr)
+	}
+
+	cfg, err := config.LoadConfig(cfgFile)
+	if err != nil {
+		return err
+	}
+
+	if index < 1 || index > len(cfg.Rules) {
+		return fmt.Errorf("index out of range: %d", index)
+	}
+
+	// Remove rule (1-based index)
+	cfg.Rules = append(cfg.Rules[:index-1], cfg.Rules[index:]...)
+
+	if err := config.SaveConfig(cfgFile, cfg); err != nil {
+		return err
+	}
+
+	fmt.Println("Rule removed successfully")
+	return nil
+}
+
+func runConfigSetDefault(command string) error {
+	// Check if config exists first
+	configPath, err := config.GetConfigPath(cfgFile)
+	if err != nil {
+		return err
+	}
+
+	var cfg *config.Config
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		cfg = &config.Config{Version: "1"}
+	} else {
+		cfg, err = config.LoadConfig(cfgFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	cfg.DefaultCommand = command
+	// Clear alias if present to avoid confusion
+	cfg.Default = ""
+
+	if err := config.SaveConfig(cfgFile, cfg); err != nil {
+		return err
+	}
+
+	fmt.Println("Default command updated successfully")
 	return nil
 }
