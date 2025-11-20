@@ -1,5 +1,7 @@
 package main
 
+import "github.com/SuzumiyaAoba/entry/internal/cli"
+
 func main() {
-	Execute()
+	cli.Execute()
 }
