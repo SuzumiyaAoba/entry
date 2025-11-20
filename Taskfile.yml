@@ -15,11 +15,25 @@ tasks:
     cmds:
       - go test ./...
 
+  coverage:
+    desc: Run tests with coverage
+    cmds:
+      - go test ./... -coverprofile=coverage.out
+      - go tool cover -func=coverage.out
+
+  coverage-html:
+    desc: Generate HTML coverage report
+    cmds:
+      - go test ./... -coverprofile=coverage.out
+      - go tool cover -html=coverage.out -o coverage.html
+      - echo "Coverage report generated at coverage.html"
+
   clean:
     desc: Clean artifacts
     cmds:
       - rm -f et
       - rm -rf dist
+      - rm -f coverage.out coverage.html
 
   release:
     desc: Create a snapshot release

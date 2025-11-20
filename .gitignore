@@ -3,3 +3,7 @@
 
 # Goreleaser
 dist/
+
+# Test coverage
+coverage.out
+coverage.html

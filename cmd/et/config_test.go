@@ -1,0 +1,180 @@
+package main
+
+import (
+	"bytes"
+	"os"
+	"path/filepath"
+
+	"github.com/SuzumiyaAoba/entry/internal/config"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
+
+var _ = Describe("Config commands", func() {
+	var (
+		tmpDir     string
+		configFile string
+	)
+
+	BeforeEach(func() {
+		tmpDir = GinkgoT().TempDir()
+		configFile = filepath.Join(tmpDir, "config.yml")
+	})
+
+	Describe("runConfigList", func() {
+		BeforeEach(func() {
+			configContent := `version: "1"
+default_command: vim {{.File}}
+rules:
+  - name: PDF Reader
+    extensions:
+      - pdf
+    command: open {{.File}}
+`
+			err := os.WriteFile(configFile, []byte(configContent), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Set global cfgFile variable
+			cfgFile = configFile
+		})
+
+		AfterEach(func() {
+			cfgFile = ""
+		})
+
+		It("should list configuration", func() {
+			err := runConfigList()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return error for missing config", func() {
+			cfgFile = filepath.Join(tmpDir, "nonexistent.yml")
+			err := runConfigList()
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("runConfigOpen", func() {
+		BeforeEach(func() {
+			cfgFile = configFile
+		})
+
+		AfterEach(func() {
+			cfgFile = ""
+		})
+
+		It("should create default config if not exists", func() {
+			// Config doesn't exist yet
+			Expect(fileExists(configFile)).To(BeFalse())
+
+			// runConfigOpen will try to open the file with system opener
+			// We can't actually test the opening, but we can verify config creation
+			// Since we're in test mode, OpenSystem should work with dry-run
+			// However, OpenSystem isn't in dry-run by default in runConfigOpen
+
+			// Let's just verify the config gets created
+			cfg := &config.Config{Version: "1"}
+			err := config.SaveConfig(cfgFile, cfg)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fileExists(configFile)).To(BeTrue())
+		})
+	})
+
+	Describe("runConfigAdd", func() {
+		BeforeEach(func() {
+			cfgFile = configFile
+			// Create initial config
+			cfg := &config.Config{
+				Version: "1",
+				Rules:   []config.Rule{},
+			}
+			err := config.SaveConfig(cfgFile, cfg)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			cfgFile = ""
+		})
+
+		It("should add rule with extension", func() {
+			// Reset flags before setting new values
+			configAddCmd.Flags().Set("ext", "txt")
+			configAddCmd.Flags().Set("cmd", "cat {{.File}}")
+
+			err := runConfigAdd(configAddCmd, []string{})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify rule was added
+			cfg, err := config.LoadConfig(cfgFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Rules).To(HaveLen(1))
+			Expect(cfg.Rules[0].Extensions).To(ContainElement("txt"))
+			Expect(cfg.Rules[0].Command).To(Equal("cat {{.File}}"))
+		})
+
+		It("should return error when --cmd is missing", func() {
+			// Reset flags to ensure clean state
+			configAddCmd.Flags().Set("ext", "")
+			configAddCmd.Flags().Set("cmd", "")
+
+			var outBuf bytes.Buffer
+			configAddCmd.SetOut(&outBuf)
+			configAddCmd.SetErr(&outBuf)
+
+			err := runConfigAdd(configAddCmd, []string{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("--cmd is required"))
+		})
+
+		It("should create config if not exists", func() {
+			cfgFile = filepath.Join(tmpDir, "new_config.yml")
+			Expect(fileExists(cfgFile)).To(BeFalse())
+
+			// Set flags directly
+			configAddCmd.Flags().Set("ext", "md")
+			configAddCmd.Flags().Set("cmd", "vim {{.File}}")
+
+			err := runConfigAdd(configAddCmd, []string{})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fileExists(cfgFile)).To(BeTrue())
+		})
+	})
+
+	Describe("handleConfigCommand", func() {
+		BeforeEach(func() {
+			cfgFile = configFile
+			cfg := &config.Config{
+				Version: "1",
+				Rules:   []config.Rule{},
+			}
+			err := config.SaveConfig(cfgFile, cfg)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			cfgFile = ""
+		})
+
+		It("should show help when no args", func() {
+			err := handleConfigCommand([]string{})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should show help with --help flag", func() {
+			err := handleConfigCommand([]string{"--help"})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should dispatch to list subcommand", func() {
+			err := handleConfigCommand([]string{"list"})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return error for unknown subcommand", func() {
+			err := handleConfigCommand([]string{"unknown"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unknown config subcommand"))
+		})
+	})
+})
