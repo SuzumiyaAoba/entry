@@ -23,6 +23,7 @@ func init() {
 	rootCmd.Flags().Bool("explain", false, "Show detailed matching information")
 
 	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(completionCmd)
 }
 
 var rootCmd = &cobra.Command{
@@ -79,6 +80,11 @@ var rootCmd = &cobra.Command{
 		// Check for built-in commands (manual dispatch)
 		if commandArgs[0] == "config" {
 			return handleConfigCommand(commandArgs[1:])
+		}
+		if commandArgs[0] == "completion" {
+			// Let Cobra handle completion command
+			cmd.SetArgs(commandArgs)
+			return cmd.Execute()
 		}
 
 		cfg, err := config.LoadConfig(cfgFile)

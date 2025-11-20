@@ -143,7 +143,7 @@ func handleExplain(cmd *cobra.Command, cfg *config.Config, filename string) erro
 		// Scheme check
 		if rule.Scheme != "" {
 			u, _ := url.Parse(filename)
-			if isURLType && strings.ToLower(u.Scheme) == strings.ToLower(rule.Scheme) {
+			if isURLType && strings.EqualFold(u.Scheme, rule.Scheme) {
 				result.conditions = append(result.conditions, "✓ Scheme: "+rule.Scheme)
 				matchReasons = append(matchReasons, "Scheme")
 				ruleMatched = true

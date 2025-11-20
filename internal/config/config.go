@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"gopkg.in/yaml.v3"
 )
@@ -90,5 +91,24 @@ func SaveConfig(path string, cfg *Config) error {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
+	return nil
+}
+
+func ValidateConfig(cfg *Config) error {
+	for i, rule := range cfg.Rules {
+		if rule.Command == "" {
+			return fmt.Errorf("rule %d: command is required", i+1)
+		}
+		if rule.Regex != "" {
+			if _, err := regexp.Compile(rule.Regex); err != nil {
+				return fmt.Errorf("rule %d: invalid regex '%s': %w", i+1, rule.Regex, err)
+			}
+		}
+		if rule.Mime != "" {
+			if _, err := regexp.Compile(rule.Mime); err != nil {
+				return fmt.Errorf("rule %d: invalid mime regex '%s': %w", i+1, rule.Mime, err)
+			}
+		}
+	}
 	return nil
 }

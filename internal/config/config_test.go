@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SuzumiyaAoba/entry/internal/config"
 	. "github.com/SuzumiyaAoba/entry/internal/config"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -66,5 +67,43 @@ rules:
 			_, err := LoadConfig(filepath.Join(tmpDir, "nonexistent.yml"))
 			Expect(err).To(HaveOccurred())
 		})
+	})
+})
+
+var _ = Describe("ValidateConfig", func() {
+	It("should return nil for valid config", func() {
+		cfg := &config.Config{
+			Rules: []config.Rule{
+				{Command: "echo", Regex: "^test$", Mime: "text/plain"},
+			},
+		}
+		Expect(config.ValidateConfig(cfg)).To(Succeed())
+	})
+
+	It("should return error for missing command", func() {
+		cfg := &config.Config{
+			Rules: []config.Rule{
+				{Command: ""},
+			},
+		}
+		Expect(config.ValidateConfig(cfg)).To(HaveOccurred())
+	})
+
+	It("should return error for invalid regex", func() {
+		cfg := &config.Config{
+			Rules: []config.Rule{
+				{Command: "echo", Regex: "["},
+			},
+		}
+		Expect(config.ValidateConfig(cfg)).To(HaveOccurred())
+	})
+
+	It("should return error for invalid mime regex", func() {
+		cfg := &config.Config{
+			Rules: []config.Rule{
+				{Command: "echo", Mime: "["},
+			},
+		}
+		Expect(config.ValidateConfig(cfg)).To(HaveOccurred())
 	})
 })

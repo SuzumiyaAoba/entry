@@ -51,6 +51,25 @@ func init() {
 	configAddCmd.Flags().String("ext", "", "Extension to match (comma separated)")
 	configAddCmd.Flags().String("cmd", "", "Command to execute")
 	configAddCmd.MarkFlagRequired("cmd")
+
+	configCmd.AddCommand(configInitCmd)
+	configCmd.AddCommand(configCheckCmd)
+}
+
+var configInitCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Initialize default configuration",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runConfigInit()
+	},
+}
+
+var configCheckCmd = &cobra.Command{
+	Use:   "check",
+	Short: "Check configuration validity",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runConfigCheck()
+	},
 }
 
 func handleConfigCommand(args []string) error {
@@ -96,6 +115,10 @@ func handleConfigCommand(args []string) error {
 		}
 		// And then call RunE
 		return runConfigAdd(configAddCmd, configAddCmd.Flags().Args())
+	case "init":
+		return runConfigInit()
+	case "check":
+		return runConfigCheck()
 	default:
 		return fmt.Errorf("unknown config subcommand: %s", subcmd)
 	}
@@ -162,5 +185,50 @@ func runConfigAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("Rule added successfully")
+	return nil
+}
+
+func runConfigInit() error {
+	configPath, err := config.GetConfigPath(cfgFile)
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(configPath); err == nil {
+		return fmt.Errorf("config file already exists at %s", configPath)
+	}
+
+	cfg := &config.Config{
+		Version: "1",
+		DefaultCommand: "vim {{.File}}",
+		Rules: []config.Rule{
+			{
+				Name: "Example Rule",
+				Extensions: []string{"txt", "md"},
+				Command: "cat {{.File}}",
+				Terminal: true,
+			},
+		},
+	}
+
+	if err := config.SaveConfig(cfgFile, cfg); err != nil {
+		return fmt.Errorf("failed to create default config: %w", err)
+	}
+
+	fmt.Printf("Created default config at %s\n", configPath)
+	return nil
+}
+
+func runConfigCheck() error {
+	cfg, err := config.LoadConfig(cfgFile)
+	if err != nil {
+		return err
+	}
+
+	if err := config.ValidateConfig(cfg); err != nil {
+		return err
+	}
+
+	fmt.Println("Configuration is valid")
 	return nil
 }
