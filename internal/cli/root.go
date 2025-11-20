@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/SuzumiyaAoba/entry/internal/config"
 	"github.com/SuzumiyaAoba/entry/internal/executor"
@@ -12,80 +11,35 @@ import (
 
 
 var (
-	cfgFile string
-	dryRun  bool
+	cfgFile     string
+	dryRun      bool
+	interactive bool
+	explain     bool
 )
 
 func init() {
 	rootCmd.Flags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/entry/config.yml)")
-	rootCmd.Flags().Bool("dry-run", false, "print command instead of executing")
-	rootCmd.Flags().BoolP("select", "s", false, "Interactive selection")
-	rootCmd.Flags().Bool("explain", false, "Show detailed matching information")
+	rootCmd.Flags().BoolVar(&dryRun, "dry-run", false, "print command instead of executing")
+	rootCmd.Flags().BoolVarP(&interactive, "select", "s", false, "Interactive selection")
+	rootCmd.Flags().BoolVar(&explain, "explain", false, "Show detailed matching information")
+	
+	// Allow flags after positional arguments to be passed to the command
+	rootCmd.Flags().SetInterspersed(false)
 
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(completionCmd)
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "et <file>",
-	Short: "Entry is a CLI file association tool",
-	Long:  `Entry allows you to execute specific commands based on file extensions or regex patterns matched against a provided file argument.`,
-	Args:               cobra.MinimumNArgs(1),
-	DisableFlagParsing: true,
+	Use:     "et <file>",
+	Short:   "Entry is a CLI file association tool",
+	Long:    `Entry allows you to execute specific commands based on file extensions or regex patterns matched against a provided file argument.`,
+	Version: Version,
+	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Manual flag parsing
-		var commandArgs []string
-		for i := 0; i < len(args); i++ {
-			arg := args[i]
-			if arg == "--version" || arg == "-v" {
-				fmt.Println("et v0.1.0")
-				return nil
-			}
-			if arg == "--help" || arg == "-h" {
-				return cmd.Help()
-			}
-			if arg == "--dry-run" {
-				dryRun = true
-				continue
-			} else if arg == "--config" {
-				if i+1 < len(args) {
-					cfgFile = args[i+1]
-					i++ // Skip next arg
-					continue
-				} else {
-					return fmt.Errorf("flag needs an argument: --config")
-				}
-			} else if strings.HasPrefix(arg, "--config=") {
-				cfgFile = strings.TrimPrefix(arg, "--config=")
-				continue
-			} else if arg == "--select" || arg == "-s" || arg == "--explain" {
-				// These flags are handled later, skip them here
-				continue
-			} else if arg == "--" { // Stop parsing at first non-flag or "--"
-				commandArgs = args[i+1:]
-				break
-			} else if !strings.HasPrefix(arg, "-") {
-				commandArgs = args[i:]
-				break
-			}
-			// Unknown flag - treat as part of command args
-			commandArgs = args[i:]
-			break
-		}
-
-		if len(commandArgs) == 0 {
-			return fmt.Errorf("requires at least 1 argument")
-		}
-
-		// Check for built-in commands (manual dispatch)
-		if commandArgs[0] == "config" {
-			return handleConfigCommand(commandArgs[1:])
-		}
-		if commandArgs[0] == "completion" {
-			// Let Cobra handle completion command
-			cmd.SetArgs(commandArgs)
-			return cmd.Execute()
-		}
+		// Args are already parsed by Cobra
+		// args[0] is the file/command
+		// args[1:] are arguments to the command (if matched) or part of the command
 
 		cfg, err := config.LoadConfig(cfgFile)
 		if err != nil {
@@ -95,26 +49,20 @@ var rootCmd = &cobra.Command{
 		// Initialize Executor
 		exec := executor.NewExecutor(cmd.OutOrStdout(), dryRun)
 
-		// Check for mode flags
-		interactive := false
-		explain := false
-		for _, arg := range args {
-			if arg == "--select" || arg == "-s" {
-				interactive = true
-			}
-			if arg == "--explain" {
-				explain = true
-			}
-		}
-
 		// Explain mode: show detailed matching information
-		if explain && len(commandArgs) == 1 {
-			return handleExplain(cmd, cfg, commandArgs[0])
+		// Only valid if we have exactly one argument (the file)
+		if explain {
+			if len(args) == 1 {
+				return handleExplain(cmd, cfg, args[0])
+			}
+			// If more args, maybe warn? For now, just ignore explain or error?
+			// Existing behavior was: if explain && len(commandArgs) == 1
+			// Let's stick to that.
 		}
 
 		// Handle file execution with single argument
-		if len(commandArgs) == 1 {
-			filename := commandArgs[0]
+		if len(args) == 1 {
+			filename := args[0]
 			
 			// Interactive mode
 			if interactive {
@@ -129,7 +77,8 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Handle command execution with multiple arguments
-		return handleCommandExecution(cfg, exec, commandArgs)
+		// Or if file execution failed
+		return handleCommandExecution(cfg, exec, args)
 	},
 }
 

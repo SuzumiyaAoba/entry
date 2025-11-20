@@ -12,6 +12,8 @@ builds:
     goarch:
       - amd64
       - arm64
+    ldflags:
+      - -s -w -X github.com/SuzumiyaAoba/entry/internal/cli.Version={{.Version}}
 
 archives:
   - format: tar.gz

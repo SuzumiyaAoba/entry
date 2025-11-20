@@ -30,6 +30,12 @@ var _ = Describe("Entry CLI", func() {
 		errBuf.Reset()
 		rootCmd.SetOut(&outBuf)
 		rootCmd.SetErr(&errBuf)
+		
+		// Reset global flags
+		cfgFile = ""
+		dryRun = false
+		interactive = false
+		explain = false
 	})
 
 	Context("with aliases", func() {

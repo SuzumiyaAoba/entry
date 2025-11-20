@@ -141,42 +141,7 @@ rules:
 		})
 	})
 
-	Describe("handleConfigCommand", func() {
-		BeforeEach(func() {
-			cfgFile = configFile
-			cfg := &config.Config{
-				Version: "1",
-				Rules:   []config.Rule{},
-			}
-			err := config.SaveConfig(cfgFile, cfg)
-			Expect(err).NotTo(HaveOccurred())
-		})
 
-		AfterEach(func() {
-			cfgFile = ""
-		})
-
-		It("should show help when no args", func() {
-			err := handleConfigCommand([]string{})
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should show help with --help flag", func() {
-			err := handleConfigCommand([]string{"--help"})
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should dispatch to list subcommand", func() {
-			err := handleConfigCommand([]string{"list"})
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should return error for unknown subcommand", func() {
-			err := handleConfigCommand([]string{"unknown"})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("unknown config subcommand"))
-		})
-	})
 
 	Describe("runConfigRemove", func() {
 		BeforeEach(func() {
