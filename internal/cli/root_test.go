@@ -38,6 +38,46 @@ var _ = Describe("Entry CLI", func() {
 		explain = false
 	})
 
+	Context("Command Disambiguation", func() {
+		BeforeEach(func() {
+			configContent := `
+version: "1"
+rules:
+  - name: Config Rule
+    extensions: [config]
+    command: echo "Opening config file"
+`
+			err := os.WriteFile(configFile, []byte(configContent), 0644)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should treat 'config' as file argument without double dash", func() {
+			// et config -> should match rule or fail (here matches rule)
+			rootCmd.SetArgs([]string{"--config", configFile, "--dry-run", "config"})
+			err := rootCmd.Execute()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("Opening config file"))
+		})
+
+		It("should execute config subcommand with double dash", func() {
+			// et -- config list -> should execute config list command
+			rootCmd.SetArgs([]string{"--config", configFile, "--", "config", "list"})
+			err := rootCmd.Execute()
+			Expect(err).NotTo(HaveOccurred())
+			// config list output is YAML
+			Expect(outBuf.String()).To(ContainSubstring("version: \"1\""))
+		})
+
+		It("should handle flags before double dash", func() {
+			// et --dry-run -- config list
+			// Note: config list doesn't use dry-run, but we check if parsing works
+			rootCmd.SetArgs([]string{"--config", configFile, "--dry-run", "--", "config", "list"})
+			err := rootCmd.Execute()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("version: \"1\""))
+		})
+	})
+
 	Context("with aliases", func() {
 		BeforeEach(func() {
 			configContent := `
