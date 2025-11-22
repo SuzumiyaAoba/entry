@@ -69,6 +69,10 @@ func init() {
 	configCmd.AddCommand(configEditCmd)
 	configCmd.AddCommand(configProfileListCmd)
 	configCmd.AddCommand(configProfileCopyCmd)
+	configCmd.AddCommand(configAliasCmd)
+	configCmd.AddCommand(configMoveCmd)
+	configCmd.AddCommand(configExportCmd)
+	configCmd.AddCommand(configImportCmd)
 }
 
 func runConfigList(cmd *cobra.Command) error {

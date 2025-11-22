@@ -54,6 +54,7 @@ Simply type et :help [path to command] for full details.`,
 	// Register subcommands
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(completionCmd)
+	rootCmd.AddCommand(historyCmd)
 }
 
 var rootCmd = &cobra.Command{

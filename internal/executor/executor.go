@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"text/template"
+
+	"github.com/SuzumiyaAoba/entry/internal/history"
 )
 
 type CommandData struct {
@@ -102,6 +104,11 @@ func (e *Executor) Execute(commandTmpl string, file string, opts ExecutionOption
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("command execution failed: %w", err)
+	}
+
+	// Record history
+	if !e.DryRun {
+		_ = history.AddEntry(file, "")
 	}
 
 	return nil
