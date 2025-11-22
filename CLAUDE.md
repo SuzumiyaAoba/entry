@@ -63,7 +63,7 @@ The root command in `cmd/et/root.go` dispatches to different execution modes:
 - **Interactive mode** (`--select`, `-s`): Shows interactive selector (using Charm Huh) with all matching rules + system default
 - **Explain mode** (`--explain`): Displays detailed matching information with styled output (using Charm Lipgloss)
 - **Command execution**: Multiple arguments or no file match → execute as shell command (with alias support)
-- **Config subcommands**: `config list`, `config open`, `config add` for configuration management
+- **Config subcommands**: `:config list`, `:config open`, `:config add` for configuration management
 
 ### Rule Matching System
 

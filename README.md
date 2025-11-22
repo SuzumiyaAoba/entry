@@ -84,7 +84,7 @@ The configuration file is located at `~/.config/entry/config.yml`.
 Initialize a default configuration:
 
 ```bash
-et config init
+et :config init
 ```
 
 ### Managing Rules
@@ -93,22 +93,22 @@ You can manage rules entirely from the CLI:
 
 ```bash
 # Add a rule for PDF files
-et config add --name "PDF Reader" --ext "pdf" --cmd "open {{.File}}" --background
+et :config add --name "PDF Reader" --ext "pdf" --cmd "open {{.File}}" --background
 
 # Add a rule for log files using regex
-et config add --name "Log Viewer" --regex ".*\.log$" --cmd "tail -f {{.File}}" --terminal
+et :config add --name "Log Viewer" --regex ".*\.log$" --cmd "tail -f {{.File}}" --terminal
 
 # Add a rule with MIME type matching
-et config add --name "Images" --mime "image/.*" --cmd "feh {{.File}}"
+et :config add --name "Images" --mime "image/.*" --cmd "feh {{.File}}"
 
-# Remove a rule by index (see 'et config list' for indices)
-et config remove 1
+# Remove a rule by index (see 'et :config list' for indices)
+et :config remove 1
 
 # Set the default command (fallback)
-et config set-default "vim {{.File}}"
+et :config set-default "vim {{.File}}"
 
 # Edit rules interactively
-et config edit
+et :config edit
 ```
 
 ### Config Add Flags
@@ -168,10 +168,10 @@ Profiles allow you to have different configurations for different environments.
 
 ```bash
 # Create a new profile named 'work' based on default
-et config profile-copy default work
+et :config profile-copy default work
 
 # List available profiles
-et config profile-list
+et :config profile-list
 
 # Use the 'work' profile for a single command
 et --profile work document.pdf
