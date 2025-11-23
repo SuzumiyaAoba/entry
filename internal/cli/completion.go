@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 )
 
@@ -83,15 +84,16 @@ func CompletionProfiles(cmd *cobra.Command, args []string, toComplete string) ([
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	var profiles []string
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".yml") {
-			profileName := strings.TrimSuffix(entry.Name(), ".yml")
-			if strings.HasPrefix(profileName, toComplete) {
-				profiles = append(profiles, profileName)
-			}
+	profiles := lo.FilterMap(entries, func(entry os.DirEntry, _ int) (string, bool) {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yml") {
+			return "", false
 		}
-	}
+		profileName := strings.TrimSuffix(entry.Name(), ".yml")
+		if !strings.HasPrefix(profileName, toComplete) {
+			return "", false
+		}
+		return profileName, true
+	})
 
 	return profiles, cobra.ShellCompDirectiveNoFileComp
 }

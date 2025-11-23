@@ -67,14 +67,7 @@ func LoadConfig(path string) (*Config, error) {
 }
 
 func GetConfigPath(path string) (string, error) {
-	if path != "" {
-		return path, nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get user home dir: %w", err)
-	}
-	return filepath.Join(home, ".config", "entry", "config.yml"), nil
+	return GetConfigPathWithProfile(path, "")
 }
 
 // GetConfigPathWithProfile returns the config file path for a specific profile

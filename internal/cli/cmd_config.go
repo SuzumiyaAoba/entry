@@ -8,6 +8,7 @@ import (
 	"github.com/SuzumiyaAoba/entry/internal/config"
 	"github.com/SuzumiyaAoba/entry/internal/executor"
 	"github.com/charmbracelet/huh"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -288,11 +289,10 @@ func runConfigEdit(cmd *cobra.Command) error {
 		Index int
 	}
 
-	var ruleOptions []huh.Option[ruleOption]
-	for i, rule := range cfg.Rules {
+	ruleOptions := lo.Map(cfg.Rules, func(rule config.Rule, i int) huh.Option[ruleOption] {
 		label := fmt.Sprintf("%d. %s", i+1, buildRuleLabel(&rule))
-		ruleOptions = append(ruleOptions, huh.NewOption(label, ruleOption{Label: label, Index: i}))
-	}
+		return huh.NewOption(label, ruleOption{Label: label, Index: i})
+	})
 
 	var selected ruleOption
 	selectForm := huh.NewForm(
@@ -428,12 +428,8 @@ func splitAndTrim(s string) []string {
 	if s == "" {
 		return nil
 	}
-	parts := []string{}
-	for _, part := range strings.Split(s, ",") {
+	return lo.FilterMap(strings.Split(s, ","), func(part string, _ int) (string, bool) {
 		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			parts = append(parts, trimmed)
-		}
-	}
-	return parts
+		return trimmed, trimmed != ""
+	})
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/samber/lo"
 )
 
 type Tab int
@@ -172,20 +173,18 @@ func NewModel(cfg *config.Config) (Model, error) {
 	hist, _ := history.LoadHistory()
 
 	// Setup Rules List
-	var ruleItems []list.Item
-	for _, r := range cfg.Rules {
-		ruleItems = append(ruleItems, RuleItem{Rule: r})
-	}
+	ruleItems := lo.Map(cfg.Rules, func(r config.Rule, _ int) list.Item {
+		return RuleItem{Rule: r}
+	})
 	
 	rulesList := list.New(ruleItems, list.NewDefaultDelegate(), 0, 0)
 	rulesList.Title = "Rules"
 	rulesList.SetShowHelp(false)
 
 	// Setup History List
-	var histItems []list.Item
-	for _, h := range hist {
-		histItems = append(histItems, HistoryItem{Entry: h})
-	}
+	histItems := lo.Map(hist, func(h history.HistoryEntry, _ int) list.Item {
+		return HistoryItem{Entry: h}
+	})
 	
 	historyList := list.New(histItems, list.NewDefaultDelegate(), 0, 0)
 	historyList.Title = "History"
