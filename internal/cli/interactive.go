@@ -8,6 +8,7 @@ import (
 	"github.com/SuzumiyaAoba/entry/internal/logger"
 	"github.com/SuzumiyaAoba/entry/internal/matcher"
 	"github.com/charmbracelet/huh"
+	"github.com/samber/lo"
 )
 
 type Option struct {
@@ -34,13 +35,12 @@ func buildInteractiveOptions(cfg *config.Config, filename string) ([]Option, err
 	}
 
 	logger.Debug("Found %d potential options", len(matches))
-	var options []Option
-	for _, m := range matches {
-		options = append(options, Option{
+	options := lo.Map(matches, func(m *config.Rule, _ int) Option {
+		return Option{
 			Label: buildOptionLabel(m),
 			Rule:  m,
-		})
-	}
+		}
+	})
 
 	// Add System Default if the file exists or is a URL
 	if isFileOrURL(filename) {
@@ -59,10 +59,9 @@ func buildInteractiveOptions(cfg *config.Config, filename string) ([]Option, err
 func showOptionSelector(options []Option, filename string) (Option, error) {
 	var selected Option
 
-	huhOptions := make([]huh.Option[Option], len(options))
-	for i, opt := range options {
-		huhOptions[i] = huh.NewOption(opt.Label, opt)
-	}
+	huhOptions := lo.Map(options, func(opt Option, _ int) huh.Option[Option] {
+		return huh.NewOption(opt.Label, opt)
+	})
 
 	form := huh.NewForm(
 		huh.NewGroup(

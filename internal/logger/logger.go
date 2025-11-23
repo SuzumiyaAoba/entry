@@ -3,42 +3,27 @@ package logger
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
+
+	"github.com/charmbracelet/log"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // Level represents the log level
-type Level int
+type Level = log.Level
 
 const (
 	// DEBUG level for detailed debugging information
-	DEBUG Level = iota
+	DEBUG = log.DebugLevel
 	// INFO level for general informational messages
-	INFO
+	INFO = log.InfoLevel
 	// WARN level for warning messages
-	WARN
+	WARN = log.WarnLevel
 	// ERROR level for error messages
-	ERROR
+	ERROR = log.ErrorLevel
 )
-
-// String returns the string representation of the log level
-func (l Level) String() string {
-	switch l {
-	case DEBUG:
-		return "DEBUG"
-	case INFO:
-		return "INFO"
-	case WARN:
-		return "WARN"
-	case ERROR:
-		return "ERROR"
-	default:
-		return "UNKNOWN"
-	}
-}
 
 // Logger is the interface for logging
 type Logger interface {
@@ -73,158 +58,68 @@ func DefaultConfig() Config {
 
 // entryLogger is the concrete implementation of Logger
 type entryLogger struct {
-	config     Config
-	stderrLog  *log.Logger
-	fileLog    *log.Logger
-	file       *os.File
-	mu         sync.Mutex
-	currentSize int64
+	logger *log.Logger
+	closer io.Closer
 }
 
 // New creates a new logger with the given configuration
 func New(config Config) (Logger, error) {
-	l := &entryLogger{
-		config:    config,
-		stderrLog: log.New(os.Stderr, "", 0),
-	}
-
 	if !config.Enabled {
-		return l, nil
+		return NewNopLogger(), nil
 	}
 
-	// Setup file logging if output file is specified
+	var output io.Writer = os.Stderr
+	var closer io.Closer
+
 	if config.OutputFile != "" {
-		if err := l.setupFileLogging(); err != nil {
-			return nil, fmt.Errorf("failed to setup file logging: %w", err)
+		// Ensure directory exists
+		dir := filepath.Dir(config.OutputFile)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create log directory: %w", err)
 		}
+
+		// Use lumberjack for log rotation
+		lumber := &lumberjack.Logger{
+			Filename:   config.OutputFile,
+			MaxSize:    int(config.MaxSize / 1024 / 1024), // MB
+			MaxBackups: 3,
+			MaxAge:     28,   // days
+			Compress:   true, // disabled by default
+		}
+		output = io.MultiWriter(os.Stderr, lumber)
+		closer = lumber
 	}
 
-	return l, nil
+	l := log.New(output)
+	l.SetLevel(config.Level)
+	l.SetReportTimestamp(true)
+	l.SetReportCaller(false)
+
+	return &entryLogger{
+		logger: l,
+		closer: closer,
+	}, nil
 }
 
-// setupFileLogging initializes file logging
-func (l *entryLogger) setupFileLogging() error {
-	// Ensure directory exists
-	dir := filepath.Dir(l.config.OutputFile)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create log directory: %w", err)
-	}
-
-	// Check if rotation is needed
-	if l.config.MaxSize > 0 {
-		if info, err := os.Stat(l.config.OutputFile); err == nil {
-			if info.Size() >= l.config.MaxSize {
-				if err := l.rotateLogFile(); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	// Open log file
-	file, err := os.OpenFile(l.config.OutputFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open log file: %w", err)
-	}
-
-	l.file = file
-	l.fileLog = log.New(file, "", 0)
-
-	// Get current file size
-	if info, err := file.Stat(); err == nil {
-		l.currentSize = info.Size()
-	}
-
-	return nil
-}
-
-// rotateLogFile rotates the log file
-func (l *entryLogger) rotateLogFile() error {
-	// Close current file if open
-	if l.file != nil {
-		l.file.Close()
-	}
-
-	// Rename current log file with timestamp
-	timestamp := time.Now().Format("20060102-150405")
-	rotatedPath := fmt.Sprintf("%s.%s", l.config.OutputFile, timestamp)
-
-	if err := os.Rename(l.config.OutputFile, rotatedPath); err != nil {
-		// If file doesn't exist, that's okay
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("failed to rotate log file: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// log is the internal logging method
-func (l *entryLogger) log(level Level, format string, args ...interface{}) {
-	if !l.config.Enabled {
-		return
-	}
-
-	if level < l.config.Level {
-		return
-	}
-
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	message := fmt.Sprintf(format, args...)
-	logLine := fmt.Sprintf("[%s] %s: %s\n", timestamp, level.String(), message)
-
-	// Write to stderr
-	l.stderrLog.Print(logLine)
-
-	// Write to file if configured
-	if l.fileLog != nil {
-		l.fileLog.Print(logLine)
-		l.currentSize += int64(len(logLine))
-
-		// Check if rotation is needed
-		if l.config.MaxSize > 0 && l.currentSize >= l.config.MaxSize {
-			if err := l.rotateLogFile(); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to rotate log file: %v\n", err)
-			} else {
-				// Re-setup file logging after rotation
-				if err := l.setupFileLogging(); err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to re-setup file logging: %v\n", err)
-				}
-			}
-		}
-	}
-}
-
-// Debug logs a debug message
 func (l *entryLogger) Debug(format string, args ...interface{}) {
-	l.log(DEBUG, format, args...)
+	l.logger.Debugf(format, args...)
 }
 
-// Info logs an info message
 func (l *entryLogger) Info(format string, args ...interface{}) {
-	l.log(INFO, format, args...)
+	l.logger.Infof(format, args...)
 }
 
-// Warn logs a warning message
 func (l *entryLogger) Warn(format string, args ...interface{}) {
-	l.log(WARN, format, args...)
+	l.logger.Warnf(format, args...)
 }
 
-// Error logs an error message
 func (l *entryLogger) Error(format string, args ...interface{}) {
-	l.log(ERROR, format, args...)
+	l.logger.Errorf(format, args...)
 }
 
-// Close closes the logger and any open file handles
 func (l *entryLogger) Close() error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if l.file != nil {
-		return l.file.Close()
+	if l.closer != nil {
+		return l.closer.Close()
 	}
 	return nil
 }
@@ -287,25 +182,4 @@ func GetDefaultLogPath() (string, error) {
 		return "", fmt.Errorf("failed to get user home dir: %w", err)
 	}
 	return filepath.Join(home, ".config", "entry", "logs", "entry.log"), nil
-}
-
-// MultiWriter creates a writer that writes to multiple writers
-type MultiWriter struct {
-	writers []io.Writer
-}
-
-// NewMultiWriter creates a new MultiWriter
-func NewMultiWriter(writers ...io.Writer) *MultiWriter {
-	return &MultiWriter{writers: writers}
-}
-
-// Write writes to all writers
-func (mw *MultiWriter) Write(p []byte) (n int, err error) {
-	for _, w := range mw.writers {
-		n, err = w.Write(p)
-		if err != nil {
-			return
-		}
-	}
-	return len(p), nil
 }
