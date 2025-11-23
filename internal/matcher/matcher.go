@@ -9,6 +9,7 @@ import (
 
 	"github.com/SuzumiyaAoba/entry/internal/config"
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/samber/lo"
 )
 
 func Match(rules []config.Rule, filename string) ([]*config.Rule, error) {
@@ -59,14 +60,9 @@ func matchRule(rule *config.Rule, filename string) (bool, error) {
 
 	// Check OS
 	if len(rule.OS) > 0 {
-		matchedOS := false
-		for _, osName := range rule.OS {
-			if strings.ToLower(osName) == runtime.GOOS {
-				matchedOS = true
-				break
-			}
-		}
-		if !matchedOS {
+		if !lo.ContainsBy(rule.OS, func(osName string) bool {
+			return strings.EqualFold(osName, runtime.GOOS)
+		}) {
 			return false, nil
 		}
 	}
@@ -90,30 +86,13 @@ func matchRule(rule *config.Rule, filename string) (bool, error) {
 		}
 		pathExt = strings.ToLower(strings.TrimPrefix(pathExt, "."))
 
-		for _, ruleExt := range rule.Extensions {
-			if strings.ToLower(ruleExt) == pathExt {
-				return true, nil
-			}
+		if lo.ContainsBy(rule.Extensions, func(ruleExt string) bool {
+			return strings.EqualFold(ruleExt, pathExt)
+		}) {
+			return true, nil
 		}
 		// If extensions are specified but none matched, we continue to check other conditions (Regex, MIME, etc.)
 		// This allows a rule to match EITHER by extension OR by regex/mime.
-	}
-
-	// Check extensions
-	if len(rule.Extensions) > 0 {
-		var pathExt string
-		if isURL {
-			pathExt = filepath.Ext(u.Path)
-		} else {
-			pathExt = filepath.Ext(filename)
-		}
-		pathExt = strings.ToLower(strings.TrimPrefix(pathExt, "."))
-
-		for _, ruleExt := range rule.Extensions {
-			if strings.ToLower(ruleExt) == pathExt {
-				return true, nil
-			}
-		}
 	}
 
 	// Check regex
