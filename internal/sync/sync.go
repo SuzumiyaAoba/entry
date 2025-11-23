@@ -1,14 +1,11 @@
 package sync
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"time"
 
 	"github.com/SuzumiyaAoba/entry/internal/config"
+	"github.com/go-resty/resty/v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,48 +16,44 @@ type GistFile struct {
 }
 
 type Gist struct {
-	Files map[string]GistFile `json:"files"`
-	Description string        `json:"description"`
-	Public      bool          `json:"public"`
+	Files       map[string]GistFile `json:"files"`
+	Description string              `json:"description"`
+	Public      bool                `json:"public"`
 }
 
 type Client struct {
-	Token      string
-	httpClient *http.Client
+	Token  string
+	client *resty.Client
 }
 
 func NewClient(token string) *Client {
+	client := resty.New().
+		SetBaseURL(GitHubAPIURL).
+		SetTimeout(10 * time.Second).
+		SetHeader("Accept", "application/vnd.github.v3+json")
+
+	if token != "" {
+		client.SetHeader("Authorization", "token "+token)
+	}
+
 	return &Client{
-		Token: token,
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		Token:  token,
+		client: client,
 	}
 }
 
 func (c *Client) GetGist(gistID string) (*config.Config, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gists/%s", GitHubAPIURL, gistID), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if c.Token != "" {
-		req.Header.Set("Authorization", "token "+c.Token)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get gist: %s", resp.Status)
-	}
-
 	var gist Gist
-	if err := json.NewDecoder(resp.Body).Decode(&gist); err != nil {
+	resp, err := c.client.R().
+		SetResult(&gist).
+		Get("/gists/" + gistID)
+
+	if err != nil {
 		return nil, err
+	}
+
+	if resp.IsError() {
+		return nil, fmt.Errorf("failed to get gist: %s", resp.Status())
 	}
 
 	file, ok := gist.Files["config.yml"]
@@ -89,30 +82,16 @@ func (c *Client) UpdateGist(gistID string, cfg *config.Config) error {
 		Description: "Entry Configuration (Updated " + time.Now().Format(time.RFC3339) + ")",
 	}
 
-	body, err := json.Marshal(gist)
+	resp, err := c.client.R().
+		SetBody(gist).
+		Patch("/gists/" + gistID)
+
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/gists/%s", GitHubAPIURL, gistID), bytes.NewBuffer(body))
-	if err != nil {
-		return err
-	}
-
-	if c.Token != "" {
-		req.Header.Set("Authorization", "token "+c.Token)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed to update gist: %s - %s", resp.Status, string(bodyBytes))
+	if resp.IsError() {
+		return fmt.Errorf("failed to update gist: %s - %s", resp.Status(), resp.String())
 	}
 
 	return nil
@@ -132,37 +111,21 @@ func (c *Client) CreateGist(cfg *config.Config, public bool) (string, error) {
 		Public:      public,
 	}
 
-	body, err := json.Marshal(gist)
-	if err != nil {
-		return "", err
-	}
-
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/gists", GitHubAPIURL), bytes.NewBuffer(body))
-	if err != nil {
-		return "", err
-	}
-
-	if c.Token != "" {
-		req.Header.Set("Authorization", "token "+c.Token)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("failed to create gist: %s - %s", resp.Status, string(bodyBytes))
-	}
-
 	var respData struct {
 		ID string `json:"id"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+
+	resp, err := c.client.R().
+		SetBody(gist).
+		SetResult(&respData).
+		Post("/gists")
+
+	if err != nil {
 		return "", err
+	}
+
+	if resp.IsError() {
+		return "", fmt.Errorf("failed to create gist: %s - %s", resp.Status(), resp.String())
 	}
 
 	return respData.ID, nil

@@ -31,7 +31,6 @@ var _ = Describe("Sync Client", func() {
 				{Command: "echo test"},
 			},
 		}
-		client = sync.NewClient("token")
 	})
 
 	AfterEach(func() {
@@ -47,12 +46,14 @@ var _ = Describe("Sync Client", func() {
 				Expect(r.URL.Path).To(Equal("/gists"))
 				Expect(r.Header.Get("Authorization")).To(Equal("token token"))
 
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
 				json.NewEncoder(w).Encode(map[string]string{
 					"id": "new-gist-id",
 				})
 			}))
 			sync.GitHubAPIURL = server.URL
+			client = sync.NewClient("token")
 
 			id, err := client.CreateGist(cfg, false)
 			Expect(err).NotTo(HaveOccurred())
@@ -66,6 +67,7 @@ var _ = Describe("Sync Client", func() {
 				Expect(r.Method).To(Equal("GET"))
 				Expect(r.URL.Path).To(Equal("/gists/gist-id"))
 
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"files": map[string]interface{}{
@@ -76,6 +78,7 @@ var _ = Describe("Sync Client", func() {
 				})
 			}))
 			sync.GitHubAPIURL = server.URL
+			client = sync.NewClient("token")
 
 			gotCfg, err := client.GetGist("gist-id")
 			Expect(err).NotTo(HaveOccurred())
@@ -93,6 +96,7 @@ var _ = Describe("Sync Client", func() {
 				w.WriteHeader(http.StatusOK)
 			}))
 			sync.GitHubAPIURL = server.URL
+			client = sync.NewClient("token")
 
 			err := client.UpdateGist("gist-id", cfg)
 			Expect(err).NotTo(HaveOccurred())

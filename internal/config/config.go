@@ -6,21 +6,22 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/go-playground/validator/v10"
 	"gopkg.in/yaml.v3"
 )
 
 type Rule struct {
-	Name       string   `yaml:"name,omitempty"`
-	Extensions []string `yaml:"extensions,omitempty"`
-	Regex      string   `yaml:"regex,omitempty"`
-	Mime       string   `yaml:"mime,omitempty"`
-	Scheme     string   `yaml:"scheme,omitempty"`
-	OS         []string `yaml:"os,omitempty"`
-	Background bool     `yaml:"background,omitempty"`
-	Terminal   bool     `yaml:"terminal,omitempty"`
-	Fallthrough bool    `yaml:"fallthrough,omitempty"`
-	Command    string   `yaml:"command,omitempty"`
-	Script     string   `yaml:"script,omitempty"` // JavaScript code
+	Name        string   `yaml:"name,omitempty"`
+	Extensions  []string `yaml:"extensions,omitempty"`
+	Regex       string   `yaml:"regex,omitempty" validate:"omitempty,is-regex"`
+	Mime        string   `yaml:"mime,omitempty" validate:"omitempty,is-regex"`
+	Scheme      string   `yaml:"scheme,omitempty"`
+	OS          []string `yaml:"os,omitempty"`
+	Background  bool     `yaml:"background,omitempty"`
+	Terminal    bool     `yaml:"terminal,omitempty"`
+	Fallthrough bool     `yaml:"fallthrough,omitempty"`
+	Command     string   `yaml:"command,omitempty" validate:"required"`
+	Script      string   `yaml:"script,omitempty"` // JavaScript code
 }
 
 type Config struct {
@@ -28,7 +29,7 @@ type Config struct {
 	DefaultCommand string            `yaml:"default_command,omitempty"`
 	Default        string            `yaml:"default,omitempty"` // Shorter alias for DefaultCommand
 	Aliases        map[string]string `yaml:"aliases,omitempty"`
-	Rules          []Rule            `yaml:"rules"`
+	Rules          []Rule            `yaml:"rules" validate:"dive"`
 	Sync           *SyncConfig       `yaml:"sync,omitempty"`
 }
 
@@ -76,16 +77,16 @@ func GetConfigPathWithProfile(path string, profile string) (string, error) {
 	if path != "" {
 		return path, nil
 	}
-	
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home dir: %w", err)
 	}
-	
+
 	if profile == "" {
 		return filepath.Join(home, ".config", "entry", "config.yml"), nil
 	}
-	
+
 	return filepath.Join(home, ".config", "entry", "profiles", profile+".yml"), nil
 }
 
@@ -114,20 +115,23 @@ func SaveConfig(path string, cfg *Config) error {
 }
 
 func ValidateConfig(cfg *Config) error {
-	for i, rule := range cfg.Rules {
-		if rule.Command == "" {
-			return fmt.Errorf("rule %d: command is required", i+1)
-		}
-		if rule.Regex != "" {
-			if _, err := regexp.Compile(rule.Regex); err != nil {
-				return fmt.Errorf("rule %d: invalid regex '%s': %w", i+1, rule.Regex, err)
+	validate := validator.New()
+	
+	// Register custom validation for regex
+	validate.RegisterValidation("is-regex", func(fl validator.FieldLevel) bool {
+		_, err := regexp.Compile(fl.Field().String())
+		return err == nil
+	})
+
+	if err := validate.Struct(cfg); err != nil {
+		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			// Simplify error message for the user
+			for _, e := range validationErrors {
+				// e.Namespace() gives full path like Config.Rules[0].Command
+				return fmt.Errorf("validation failed: %s is %s", e.Namespace(), e.Tag())
 			}
 		}
-		if rule.Mime != "" {
-			if _, err := regexp.Compile(rule.Mime); err != nil {
-				return fmt.Errorf("rule %d: invalid mime regex '%s': %w", i+1, rule.Mime, err)
-			}
-		}
+		return err
 	}
 	return nil
 }
