@@ -10,7 +10,7 @@ import (
 )
 
 var matchCmd = &cobra.Command{
-	Use:   "match <file>",
+	Use:   ":match <file>",
 	Short: "Check if a file matches any rule",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
