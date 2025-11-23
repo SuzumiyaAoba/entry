@@ -21,6 +21,7 @@ const (
 	TabRules Tab = iota
 	TabHistory
 	TabSync
+	TabEdit
 )
 
 var (
@@ -183,6 +184,7 @@ type Model struct {
 	// Edit State
 	EditForm          *huh.Form
 	SelectedRuleIndex int
+	EditExtensionsStr string
 }
 
 func NewModel(cfg *config.Config, configPath string) (Model, error) {
@@ -285,6 +287,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Bind directly to the slice element
 						rule := &m.Cfg.Rules[index]
 						
+						// Prepare temporary variable for extensions
+						m.EditExtensionsStr = strings.Join(rule.Extensions, ", ")
+						
 						// Create Form
 						m.EditForm = huh.NewForm(
 							huh.NewGroup(
@@ -296,14 +301,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 									Value(&rule.Command),
 								huh.NewInput().
 									Title("Extensions (comma separated)").
-									Value(&rule.Extensions).
-									Accessor(func(v []string) string {
-										return strings.Join(v, ", ")
-									}, func(s string) []string {
-										return lo.Map(strings.Split(s, ","), func(item string, _ int) string {
-											return strings.TrimSpace(item)
-										})
-									}),
+									Value(&m.EditExtensionsStr), // Bind to the model's temporary string
 								huh.NewInput().
 									Title("Regex").
 									Value(&rule.Regex),
@@ -341,19 +339,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 
 			if m.EditForm.State == huh.StateCompleted {
+				// Parse extensions back to slice from the temporary string
+				rule := &m.Cfg.Rules[m.SelectedRuleIndex]
+				if m.EditExtensionsStr == "" {
+					rule.Extensions = []string{}
+				} else {
+					rule.Extensions = lo.Map(strings.Split(m.EditExtensionsStr, ","), func(item string, _ int) string {
+						return strings.TrimSpace(item)
+					})
+				}
+
 				// Save config
 				if err := config.SaveConfig(m.ConfigPath, m.Cfg); err != nil {
 					// Handle error
 				}
 				
 				// Update list item
-				m.RulesList.SetItem(m.SelectedRuleIndex, RuleItem{Rule: m.Cfg.Rules[m.SelectedRuleIndex]})
+				m.RulesList.SetItem(m.SelectedRuleIndex, RuleItem{Rule: *rule})
 
 				m.Active = TabRules
 				m.EditForm = nil
+				m.EditExtensionsStr = "" // Clear temporary string
 			} else if m.EditForm.State == huh.StateAborted {
 				m.Active = TabRules
 				m.EditForm = nil
+				m.EditExtensionsStr = "" // Clear temporary string
 			}
 		}
 	}
