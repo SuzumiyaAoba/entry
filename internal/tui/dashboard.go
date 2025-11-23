@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 )
@@ -119,16 +120,20 @@ type keyMap struct {
 	Tab      key.Binding
 	ShiftTab key.Binding
 	Delete   key.Binding
+	Edit     key.Binding
+	Quit     key.Binding
+	Up       key.Binding
+	Down     key.Binding
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Tab, k.Delete, k.Quit}
+	return []key.Binding{k.Tab, k.Edit, k.Delete, k.Quit}
 }
 
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Tab, k.ShiftTab, k.Quit},
-		{k.Up, k.Down, k.Delete},
+		{k.Up, k.Down, k.Edit, k.Delete},
 	}
 }
 
@@ -157,6 +162,10 @@ var keys = keyMap{
 		key.WithKeys("d", "delete"),
 		key.WithHelp("d", "delete rule"),
 	),
+	Edit: key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("e", "edit rule"),
+	),
 }
 
 type Model struct {
@@ -170,6 +179,10 @@ type Model struct {
 	RulesList   list.Model
 	HistoryList list.Model
 	Help        help.Model
+	
+	// Edit State
+	EditForm          *huh.Form
+	SelectedRuleIndex int
 }
 
 func NewModel(cfg *config.Config, configPath string) (Model, error) {
@@ -227,42 +240,91 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Help.Width = msg.Width
 
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, keys.Quit):
-			return m, tea.Quit
-		case key.Matches(msg, keys.Tab):
-			m.Active = (m.Active + 1) % 3
-			return m, nil
-		case key.Matches(msg, keys.ShiftTab):
-			if m.Active == 0 {
-				m.Active = TabSync
-			} else {
-				m.Active--
+		// Global keys (except when editing)
+		if m.Active != TabEdit {
+			switch {
+			case key.Matches(msg, keys.Quit):
+				return m, tea.Quit
+			case key.Matches(msg, keys.Tab):
+				m.Active = (m.Active + 1) % 3 // Cycle through main tabs only
+				return m, nil
+			case key.Matches(msg, keys.ShiftTab):
+				if m.Active == 0 {
+					m.Active = TabSync
+				} else {
+					m.Active--
+				}
+				return m, nil
 			}
-			return m, nil
-		case key.Matches(msg, keys.Delete):
-			if m.Active == TabRules && len(m.Cfg.Rules) > 0 {
-				index := m.RulesList.Index()
-				if index >= 0 && index < len(m.Cfg.Rules) {
-					// Remove from slice
-					m.Cfg.Rules = append(m.Cfg.Rules[:index], m.Cfg.Rules[index+1:]...)
-					
-					// Save config
-					if err := config.SaveConfig(m.ConfigPath, m.Cfg); err != nil {
-						// Handle error (maybe show a status message?)
-						// For now, just ignore or log if we had a logger here
-					}
+		}
 
-					// Remove from list
-					m.RulesList.RemoveItem(index)
-					
-					// Adjust selection if needed (list handles this mostly)
+		// Context specific keys
+		if m.Active == TabRules {
+			switch {
+			case key.Matches(msg, keys.Delete):
+				if len(m.Cfg.Rules) > 0 {
+					index := m.RulesList.Index()
+					if index >= 0 && index < len(m.Cfg.Rules) {
+						// Remove from slice
+						m.Cfg.Rules = append(m.Cfg.Rules[:index], m.Cfg.Rules[index+1:]...)
+						
+						// Save config
+						if err := config.SaveConfig(m.ConfigPath, m.Cfg); err != nil {
+							// Handle error
+						}
+
+						// Remove from list
+						m.RulesList.RemoveItem(index)
+					}
+				}
+			case key.Matches(msg, keys.Edit):
+				if len(m.Cfg.Rules) > 0 {
+					index := m.RulesList.Index()
+					if index >= 0 && index < len(m.Cfg.Rules) {
+						m.SelectedRuleIndex = index
+						// Bind directly to the slice element
+						rule := &m.Cfg.Rules[index]
+						
+						// Create Form
+						m.EditForm = huh.NewForm(
+							huh.NewGroup(
+								huh.NewInput().
+									Title("Name").
+									Value(&rule.Name),
+								huh.NewInput().
+									Title("Command").
+									Value(&rule.Command),
+								huh.NewInput().
+									Title("Extensions (comma separated)").
+									Value(&rule.Extensions).
+									Accessor(func(v []string) string {
+										return strings.Join(v, ", ")
+									}, func(s string) []string {
+										return lo.Map(strings.Split(s, ","), func(item string, _ int) string {
+											return strings.TrimSpace(item)
+										})
+									}),
+								huh.NewInput().
+									Title("Regex").
+									Value(&rule.Regex),
+								huh.NewConfirm().
+									Title("Terminal").
+									Value(&rule.Terminal),
+								huh.NewConfirm().
+									Title("Background").
+									Value(&rule.Background),
+							),
+						).WithTheme(huh.ThemeCharm())
+						
+						m.EditForm.Init()
+						m.Active = TabEdit
+					}
 				}
 			}
 		}
 	}
 
-	// Delegate to active list
+	// Delegate to active component
 	switch m.Active {
 	case TabRules:
 		m.RulesList, cmd = m.RulesList.Update(msg)
@@ -270,12 +332,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case TabHistory:
 		m.HistoryList, cmd = m.HistoryList.Update(msg)
 		cmds = append(cmds, cmd)
+	case TabEdit:
+		if m.EditForm != nil {
+			form, cmd := m.EditForm.Update(msg)
+			if f, ok := form.(*huh.Form); ok {
+				m.EditForm = f
+			}
+			cmds = append(cmds, cmd)
+
+			if m.EditForm.State == huh.StateCompleted {
+				// Save config
+				if err := config.SaveConfig(m.ConfigPath, m.Cfg); err != nil {
+					// Handle error
+				}
+				
+				// Update list item
+				m.RulesList.SetItem(m.SelectedRuleIndex, RuleItem{Rule: m.Cfg.Rules[m.SelectedRuleIndex]})
+
+				m.Active = TabRules
+				m.EditForm = nil
+			} else if m.EditForm.State == huh.StateAborted {
+				m.Active = TabRules
+				m.EditForm = nil
+			}
+		}
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() string {
+	if m.Active == TabEdit {
+		return windowStyle.Width(m.Width - windowStyle.GetHorizontalFrameSize()).Render(m.EditForm.View())
+	}
+
 	doc := strings.Builder{}
 
 	// Tabs
