@@ -21,6 +21,7 @@ var _ = Describe("Profile commands", func() {
 	)
 
 	BeforeEach(func() {
+		resetGlobals()
 		tmpDir = GinkgoT().TempDir()
 		origHome = os.Getenv("HOME")
 		os.Setenv("HOME", tmpDir)
@@ -58,19 +59,17 @@ var _ = Describe("Profile commands", func() {
 			err = os.WriteFile(filepath.Join(profilesDir, "work.yml"), []byte{}, 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = runConfigProfileList()
+			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "profile-list"})
 			Expect(err).NotTo(HaveOccurred())
-			// Output is printed to stdout, not captured by rootCmd.SetOut because runConfigProfileList uses fmt.Println directly?
-			// Let's check runConfigProfileList. It uses fmt.Println.
-			// We can't capture stdout easily unless we redirect os.Stdout.
-			// But we can verify it doesn't error.
+			Expect(outBuf.String()).To(ContainSubstring("work"))
 		})
 	})
 
 	Describe("runConfigProfileCopy", func() {
 		It("should copy profile", func() {
-			err := runConfigProfileCopy("default", "newprofile")
+			err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "profile-copy", "default", "newprofile"})
 			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("Profile 'default' copied to 'newprofile'"))
 
 			profilesDir := filepath.Join(filepath.Dir(configFile), "profiles")
 			Expect(fileExists(filepath.Join(profilesDir, "newprofile.yml"))).To(BeTrue())

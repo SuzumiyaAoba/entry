@@ -14,7 +14,7 @@ var configProfileListCmd = &cobra.Command{
 	Use:   "profile-list",
 	Short: "List available configuration profiles",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runConfigProfileList()
+		return runConfigProfileList(cmd)
 	},
 }
 
@@ -23,12 +23,12 @@ var configProfileCopyCmd = &cobra.Command{
 	Short: "Copy a configuration profile",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runConfigProfileCopy(args[0], args[1])
+		return runConfigProfileCopy(cmd, args[0], args[1])
 	},
 	ValidArgsFunction: CompletionProfiles,
 }
 
-func runConfigProfileList() error {
+func runConfigProfileList(cmd *cobra.Command) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("failed to get user home dir: %w", err)
@@ -38,7 +38,7 @@ func runConfigProfileList() error {
 	
 	// Check if profiles directory exists
 	if _, err := os.Stat(profilesDir); os.IsNotExist(err) {
-		fmt.Println("No profiles available")
+		fmt.Fprintln(cmd.OutOrStdout(), "No profiles available")
 		return nil
 	}
 
@@ -48,22 +48,22 @@ func runConfigProfileList() error {
 	}
 
 	if len(entries) == 0 {
-		fmt.Println("No profiles available")
+		fmt.Fprintln(cmd.OutOrStdout(), "No profiles available")
 		return nil
 	}
 
-	fmt.Println("Available profiles:")
+	fmt.Fprintln(cmd.OutOrStdout(), "Available profiles:")
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".yml") {
 			profileName := strings.TrimSuffix(entry.Name(), ".yml")
-			fmt.Printf("  - %s\n", profileName)
+			fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", profileName)
 		}
 	}
 
 	return nil
 }
 
-func runConfigProfileCopy(from, to string) error {
+func runConfigProfileCopy(cmd *cobra.Command, from, to string) error {
 	var sourcePath string
 	var err error
 
@@ -112,6 +112,6 @@ func runConfigProfileCopy(from, to string) error {
 		return fmt.Errorf("failed to copy profile: %w", err)
 	}
 
-	fmt.Printf("Profile '%s' copied to '%s'\n", from, to)
+	fmt.Fprintf(cmd.OutOrStdout(), "Profile '%s' copied to '%s'\n", from, to)
 	return nil
 }

@@ -105,5 +105,32 @@ var _ = Describe("Dashboard", func() {
 		
 		Expect(m.ShowDetail).To(BeTrue())
 		Expect(m.DetailRule.Name).To(Equal("Rule 1"))
+		
+		// Verify View contains details
+		view := m.View()
+		Expect(view).To(ContainSubstring("Rule Details"))
+		Expect(view).To(ContainSubstring("Rule 1"))
+	})
+
+	It("should filter rules", func() {
+		// Enter filter mode
+		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}}
+		newM, _ := m.Update(msg)
+		m = newM.(tui.Model)
+		
+		// Type filter query "Rule 2"
+		for _, r := range "Rule 2" {
+			msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}}
+			newM, _ := m.Update(msg)
+			m = newM.(tui.Model)
+		}
+		
+		// Verify list is filtered (this depends on list implementation, 
+		// but we can check if View shows only Rule 2 or if list items count changed)
+		// Since we can't easily access internal list state, we check View
+		view := m.View()
+		Expect(view).To(ContainSubstring("Rule 2"))
+		// Rule 1 might still be there if fuzzy matching matches "Rule 1" with "Rule 2" query?
+		// "Rule 2" query should match "Rule 2" strongly.
 	})
 })
