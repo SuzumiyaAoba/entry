@@ -280,7 +280,7 @@ func (m Model) View() string {
 		content = m.renderSync()
 	}
 
-	doc.WriteString(windowStyle.Width(lipgloss.Width(row) - windowStyle.GetHorizontalFrameSize()).Render(content))
+	doc.WriteString(windowStyle.Width(m.Width - windowStyle.GetHorizontalFrameSize()).Render(content))
 	doc.WriteString("\n")
 	
 	// Help
