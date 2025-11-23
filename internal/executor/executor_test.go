@@ -59,3 +59,52 @@ var _ = Describe("ExecuteCommand", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 })
+
+var _ = Describe("ExecuteScript", func() {
+	var exec *Executor
+
+	BeforeEach(func() {
+		exec = NewExecutor(GinkgoWriter, false)
+	})
+
+	It("should return true for matching script", func() {
+		cmd, matched, err := exec.ExecuteScript("true", "test.txt")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(matched).To(BeTrue())
+		Expect(cmd).To(BeEmpty())
+	})
+
+	It("should return false for non-matching script", func() {
+		cmd, matched, err := exec.ExecuteScript("false", "test.txt")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(matched).To(BeFalse())
+		Expect(cmd).To(BeEmpty())
+	})
+
+	It("should return command string", func() {
+		cmd, matched, err := exec.ExecuteScript("'echo matched'", "test.txt")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(matched).To(BeTrue())
+		Expect(cmd).To(Equal("echo matched"))
+	})
+
+	It("should access file variables", func() {
+		script := `file == 'test.txt' && ext == '.txt'`
+		_, matched, err := exec.ExecuteScript(script, "test.txt")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(matched).To(BeTrue())
+	})
+
+	It("should return error on script failure", func() {
+		_, _, err := exec.ExecuteScript("throw 'error'", "test.txt")
+		Expect(err).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("OpenSystem", func() {
+	It("should print command in dry run mode", func() {
+		exec := NewExecutor(GinkgoWriter, true)
+		err := exec.OpenSystem("test.txt")
+		Expect(err).NotTo(HaveOccurred())
+	})
+})

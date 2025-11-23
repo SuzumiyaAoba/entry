@@ -107,3 +107,73 @@ var _ = Describe("ValidateConfig", func() {
 		Expect(config.ValidateConfig(cfg)).To(HaveOccurred())
 	})
 })
+
+var _ = Describe("GetConfigPath", func() {
+	It("should return provided path if not empty", func() {
+		path, err := GetConfigPath("/tmp/config.yml")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(path).To(Equal("/tmp/config.yml"))
+	})
+
+	It("should return default path if empty", func() {
+		path, err := GetConfigPath("")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(path).To(ContainSubstring(".config/entry/config.yml"))
+	})
+})
+
+var _ = Describe("GetConfigPathWithProfile", func() {
+	It("should return provided path if not empty", func() {
+		path, err := GetConfigPathWithProfile("/tmp/config.yml", "profile")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(path).To(Equal("/tmp/config.yml"))
+	})
+
+	It("should return default path if profile is empty", func() {
+		path, err := GetConfigPathWithProfile("", "")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(path).To(ContainSubstring(".config/entry/config.yml"))
+	})
+
+	It("should return profile path if profile is provided", func() {
+		path, err := GetConfigPathWithProfile("", "work")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(path).To(ContainSubstring(".config/entry/profiles/work.yml"))
+	})
+})
+
+var _ = Describe("SaveConfig", func() {
+	var tmpDir string
+
+	BeforeEach(func() {
+		tmpDir = GinkgoT().TempDir()
+	})
+
+	It("should save config to file", func() {
+		cfg := &config.Config{
+			Version: "1",
+			Rules: []config.Rule{
+				{Command: "echo"},
+			},
+		}
+		path := filepath.Join(tmpDir, "config.yml")
+		err := SaveConfig(path, cfg)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Verify file content
+		content, err := os.ReadFile(path)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(content)).To(ContainSubstring("version: \"1\""))
+		Expect(string(content)).To(ContainSubstring("command: echo"))
+	})
+})
+
+var _ = Describe("ValidateRegex", func() {
+	It("should return nil for valid regex", func() {
+		Expect(ValidateRegex(".*")).To(Succeed())
+	})
+
+	It("should return error for invalid regex", func() {
+		Expect(ValidateRegex("[")).To(HaveOccurred())
+	})
+})

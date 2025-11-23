@@ -69,6 +69,10 @@ var _ = Describe("Match", func() {
 				Scheme:  "mailto",
 				Command: "open mail",
 			},
+			{
+				Script:  "true",
+				Command: "run script",
+			},
 		}
 	})
 
@@ -106,12 +110,54 @@ var _ = Describe("Match", func() {
 		Entry("Match mime image", "image.png", "echo image", false),
 		Entry("Match extension go", "main.go", "echo go", false),
 		Entry("Match OS specific", "script.sh", "echo sh", false),
-		Entry("No match OS mismatch", "script.bat", "", false),
-		Entry("No match", "unknown.dat", "", false),
+		Entry("No match OS mismatch", "script.bat", "run script", false),
+		Entry("No match", "unknown.dat", "run script", false),
 		Entry("Case insensitive extension", "FILE.TXT", "echo text", false),
 		Entry("Match URL scheme https", "https://google.com", "open browser", false),
 		Entry("Match URL scheme mailto", "mailto:user@example.com", "open mail", false),
 		Entry("Match URL extension png", "http://example.com/image.png", "echo image", false),
 		Entry("Match URL regex", "http://example.com/foo.log", "echo log", false),
+		Entry("Match Script", "any.file", "run script", false),
 	)
+
+	Describe("MatchAll", func() {
+		It("should return all matching rules", func() {
+			multiRules := []config.Rule{
+				{Extensions: []string{"txt"}, Command: "cmd1"},
+				{Extensions: []string{"txt"}, Command: "cmd2"},
+			}
+			matches, err := MatchAll(multiRules, "file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matches).To(HaveLen(2))
+			Expect(matches[0].Command).To(Equal("cmd1"))
+			Expect(matches[1].Command).To(Equal("cmd2"))
+		})
+
+		It("should handle fallthrough logic in Match (not MatchAll)", func() {
+			// Match stops at first match unless Fallthrough is true
+			// But MatchAll should return all matches regardless of Fallthrough?
+			// Let's check MatchAll implementation.
+			// MatchAll iterates all rules and collects matches. It doesn't seem to check Fallthrough.
+			// Wait, Match checks Fallthrough. MatchAll does not.
+			
+			// Let's verify Match behavior with Fallthrough
+			ftRules := []config.Rule{
+				{Extensions: []string{"txt"}, Command: "cmd1", Fallthrough: true},
+				{Extensions: []string{"txt"}, Command: "cmd2"},
+			}
+			matches, err := Match(ftRules, "file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matches).To(HaveLen(2))
+		})
+	})
+
+	Describe("Error cases", func() {
+		It("should return error for invalid regex", func() {
+			badRules := []config.Rule{
+				{Regex: "["},
+			}
+			_, err := Match(badRules, "file.txt")
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })

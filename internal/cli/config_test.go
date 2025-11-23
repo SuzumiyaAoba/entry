@@ -253,4 +253,130 @@ rules:
 			Expect(cfg.DefaultCommand).To(Equal("nano {{.File}}"))
 		})
 	})
+
+	Describe("runConfigMove", func() {
+		BeforeEach(func() {
+			cfgFile = configFile
+			cfg := config.Config{
+				Version: "1",
+				Rules: []config.Rule{
+					{Name: "Rule 1", Command: "cmd1"},
+					{Name: "Rule 2", Command: "cmd2"},
+					{Name: "Rule 3", Command: "cmd3"},
+				},
+			}
+			err := config.SaveConfig(configFile, &cfg)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should move rule", func() {
+			// Move Rule 3 (index 3) to index 1
+			err := runConfigMove(rootCmd, 3, 1)
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg, err := config.LoadConfig(configFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Rules[0].Name).To(Equal("Rule 3"))
+			Expect(cfg.Rules[1].Name).To(Equal("Rule 1"))
+			Expect(cfg.Rules[2].Name).To(Equal("Rule 2"))
+		})
+
+		It("should return error for invalid index", func() {
+			err := runConfigMove(rootCmd, 99, 1)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("runConfigAlias", func() {
+		BeforeEach(func() {
+			cfgFile = configFile
+			cfg := config.Config{
+				Version: "1",
+				Aliases: map[string]string{
+					"old": "cmd",
+				},
+			}
+			err := config.SaveConfig(configFile, &cfg)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should add alias", func() {
+			err := runConfigAliasAdd(rootCmd, "new", "echo new")
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg, err := config.LoadConfig(configFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Aliases["new"]).To(Equal("echo new"))
+		})
+
+		It("should remove alias", func() {
+			err := runConfigAliasRemove(rootCmd, "old")
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg, err := config.LoadConfig(configFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Aliases).NotTo(HaveKey("old"))
+		})
+	})
+
+	Describe("runConfigExport/Import", func() {
+		BeforeEach(func() {
+			cfgFile = configFile
+			cfg := config.Config{
+				Version: "1",
+				Rules: []config.Rule{
+					{Name: "Export Rule", Command: "cmd"},
+				},
+			}
+			err := config.SaveConfig(configFile, &cfg)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should export config", func() {
+			exportFile := filepath.Join(tmpDir, "backup.yml")
+			err := runConfigExport(rootCmd, exportFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fileExists(exportFile)).To(BeTrue())
+		})
+
+		It("should import config", func() {
+			importFile := filepath.Join(tmpDir, "import.yml")
+			importContent := `
+version: "1"
+rules:
+  - name: Imported Rule
+    command: imported
+`
+			err := os.WriteFile(importFile, []byte(importContent), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = runConfigImport(rootCmd, importFile)
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg, err := config.LoadConfig(configFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Rules[0].Name).To(Equal("Imported Rule"))
+		})
+	})
+
+	Describe("runConfigAdd with Script", func() {
+		BeforeEach(func() {
+			cfgFile = configFile
+			cfg := &config.Config{Version: "1"}
+			err := config.SaveConfig(cfgFile, cfg)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should add rule with script", func() {
+			configAddCmd.Flags().Set("cmd", "echo script")
+			configAddCmd.Flags().Set("script", "true")
+			
+			err := runConfigAdd(configAddCmd, []string{})
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg, err := config.LoadConfig(cfgFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Rules[0].Script).To(Equal("true"))
+		})
+	})
 })

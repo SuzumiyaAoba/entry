@@ -115,5 +115,50 @@ var _ = Describe("Explain mode", func() {
 			Expect(output).To(ContainSubstring("Markdown Editor"))
 			Expect(output).To(ContainSubstring("Ext:"))
 		})
+
+		It("should show MIME matching", func() {
+			// Add MIME rule
+			cfg.Rules = append(cfg.Rules, config.Rule{
+				Name: "PDF Viewer",
+				Mime: "application/pdf",
+				Command: "open {{.File}}",
+			})
+			
+			// Create fake PDF
+			testFile := filepath.Join(tmpDir, "test.pdf")
+			err := os.WriteFile(testFile, []byte("%PDF-1.4"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = handleExplain(rootCmd, cfg, testFile)
+			Expect(err).NotTo(HaveOccurred())
+
+			output := outBuf.String()
+			Expect(output).To(ContainSubstring("PDF Viewer"))
+			Expect(output).To(ContainSubstring("MIME"))
+		})
+
+		It("should show fallthrough", func() {
+			// Add fallthrough rule
+			cfg.Rules = append([]config.Rule{
+				{
+					Name: "Logger",
+					Regex: ".*",
+					Command: "log {{.File}}",
+					Fallthrough: true,
+				},
+			}, cfg.Rules...)
+
+			testFile := filepath.Join(tmpDir, "test.txt")
+			err := os.WriteFile(testFile, []byte("content"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = handleExplain(rootCmd, cfg, testFile)
+			Expect(err).NotTo(HaveOccurred())
+
+			output := outBuf.String()
+			Expect(output).To(ContainSubstring("Logger"))
+			Expect(output).To(ContainSubstring("Text Editor"))
+			Expect(output).To(ContainSubstring("→"))
+		})
 	})
 })

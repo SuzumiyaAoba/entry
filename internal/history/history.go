@@ -16,7 +16,16 @@ type HistoryEntry struct {
 
 const MaxHistorySize = 100
 
+var customHistoryPath string
+
+func SetHistoryPath(path string) {
+	customHistoryPath = path
+}
+
 func GetHistoryPath() (string, error) {
+	if customHistoryPath != "" {
+		return customHistoryPath, nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home dir: %w", err)

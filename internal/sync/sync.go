@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const GitHubAPIURL = "https://api.github.com"
+var GitHubAPIURL = "https://api.github.com"
 
 type GistFile struct {
 	Content string `json:"content"`

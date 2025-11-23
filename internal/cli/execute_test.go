@@ -187,7 +187,7 @@ var _ = Describe("Execution helpers", func() {
 	Describe("executeRules", func() {
 		It("should execute multiple rules", func() {
 			rules := []*config.Rule{
-				{Command: "echo first {{.File}}"},
+				{Command: "echo first {{.File}}", Fallthrough: true},
 				{Command: "echo second {{.File}}"},
 			}
 			err := executeRules(exec, rules, "test.txt")

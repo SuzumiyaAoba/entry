@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 
@@ -80,6 +81,36 @@ var _ = Describe("Completion", func() {
 			profiles, directive := CompletionProfiles(nil, nil, "de")
 			Expect(directive).To(Equal(cobra.ShellCompDirectiveNoFileComp))
 			Expect(profiles).To(ConsistOf("dev", "demo"))
+		})
+	})
+
+	Describe("completionCmd", func() {
+		It("should generate bash completion", func() {
+			buf := new(bytes.Buffer)
+			completionCmd.SetOut(buf)
+			completionCmd.Run(completionCmd, []string{"bash"})
+			Expect(buf.String()).To(ContainSubstring("bash completion"))
+		})
+
+		It("should generate zsh completion", func() {
+			buf := new(bytes.Buffer)
+			completionCmd.SetOut(buf)
+			completionCmd.Run(completionCmd, []string{"zsh"})
+			Expect(buf.String()).To(ContainSubstring("zsh completion"))
+		})
+
+		It("should generate fish completion", func() {
+			buf := new(bytes.Buffer)
+			completionCmd.SetOut(buf)
+			completionCmd.Run(completionCmd, []string{"fish"})
+			Expect(buf.String()).To(ContainSubstring("fish completion"))
+		})
+
+		It("should generate powershell completion", func() {
+			buf := new(bytes.Buffer)
+			completionCmd.SetOut(buf)
+			completionCmd.Run(completionCmd, []string{"powershell"})
+			Expect(buf.String()).To(ContainSubstring("powershell completion"))
 		})
 	})
 })
