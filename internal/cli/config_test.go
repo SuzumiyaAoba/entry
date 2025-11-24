@@ -79,11 +79,33 @@ rules:
 			// We can't actually test the opening, but we can verify config creation
 			// Since we're in test mode, OpenSystem should work with dry-run
 			// However, OpenSystem isn't in dry-run by default in runConfigOpen
-
-			// Let's just verify the config gets created
-			cfg := &config.Config{Version: "1"}
-			err := config.SaveConfig(cfgFile, cfg)
-			Expect(err).NotTo(HaveOccurred())
+			
+			// We need to mock executor or ensure it doesn't fail.
+			// runConfigOpen creates a new Executor.
+			// It calls exec.OpenSystem(configPath).
+			// OpenSystem uses "open", "xdg-open" etc.
+			// In CI environment this might fail or block.
+			
+			// But we can check if config file is created BEFORE opening.
+			// Actually runConfigOpen logic:
+			// 1. Get path
+			// 2. Check if exists. If not, create default.
+			// 3. Open.
+			
+			// If we can't mock OpenSystem, this test might be flaky or fail.
+			// But we can test the creation logic if we can intercept the Open call.
+			// We can't easily intercept.
+			
+			// Let's just test that it creates the file.
+			// If OpenSystem fails, RunE returns error.
+			// We can expect error or not depending on env.
+			// But we really want to verify file creation.
+			
+			// Let's try to run it and ignore error from OpenSystem if possible, 
+			// or assume it might fail but check file existence.
+			
+			_ = runConfigOpen(rootCmd) // Ignore error
+			
 			Expect(fileExists(configFile)).To(BeTrue())
 		})
 	})

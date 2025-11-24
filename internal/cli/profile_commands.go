@@ -29,7 +29,7 @@ var configProfileCopyCmd = &cobra.Command{
 }
 
 func runConfigProfileList(cmd *cobra.Command) error {
-	home, err := os.UserHomeDir()
+	home, err := config.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("failed to get user home dir: %w", err)
 	}

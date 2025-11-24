@@ -59,9 +59,40 @@ var _ = Describe("Profile commands", func() {
 			err = os.WriteFile(filepath.Join(profilesDir, "work.yml"), []byte{}, 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "profile-list"})
+			// Mock UserHomeDir
+			origHome := config.UserHomeDir
+			config.UserHomeDir = func() (string, error) { return tmpDir, nil }
+			defer func() { config.UserHomeDir = origHome }()
+
+			err = runConfigProfileList(rootCmd)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("work"))
+		})
+
+		It("should handle no profiles directory", func() {
+			// Mock UserHomeDir
+			origHome := config.UserHomeDir
+			config.UserHomeDir = func() (string, error) { return tmpDir, nil }
+			defer func() { config.UserHomeDir = origHome }()
+
+			err := runConfigProfileList(rootCmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("No profiles available"))
+		})
+
+		It("should handle empty profiles directory", func() {
+			profilesDir := filepath.Join(filepath.Dir(configFile), "profiles")
+			err := os.MkdirAll(profilesDir, 0755)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Mock UserHomeDir
+			origHome := config.UserHomeDir
+			config.UserHomeDir = func() (string, error) { return tmpDir, nil }
+			defer func() { config.UserHomeDir = origHome }()
+
+			err = runConfigProfileList(rootCmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("No profiles available"))
 		})
 	})
 

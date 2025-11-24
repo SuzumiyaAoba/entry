@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 
 	"github.com/SuzumiyaAoba/entry/internal/history"
@@ -52,5 +53,32 @@ var _ = Describe("History command", func() {
 		entries, err := history.LoadHistory()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(entries).To(BeEmpty())
+	})
+
+	Describe("runHistory", func() {
+		It("should show message when no history", func() {
+			// Ensure history is empty
+			history.ClearHistory()
+
+			err := runHistory(rootCmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("No history available"))
+		})
+
+		It("should fail if history load fails", func() {
+			// Mock history load failure by making directory unreadable?
+			// Or just rely on LoadHistory error handling which checks for file existence.
+			// If file exists but is invalid JSON, it returns error?
+			// Let's write invalid JSON to history file.
+			
+			// We need to use the path set in BeforeEach
+			histFile := historyFile
+			err := os.WriteFile(histFile, []byte("{invalid json}"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = runHistory(rootCmd)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to load history"))
+		})
 	})
 })
