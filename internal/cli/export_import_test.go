@@ -45,6 +45,18 @@ var _ = Describe("Export/Import commands", func() {
 			err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "export", destPath})
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("should fail if config file read fails", func() {
+			// Make config unreadable
+			err := os.Chmod(cfgFile, 0000)
+			Expect(err).NotTo(HaveOccurred())
+			defer os.Chmod(cfgFile, 0644)
+
+			destPath := filepath.Join(tmpDir, "exported.yml")
+			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "export", destPath})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to read config file"))
+		})
 	})
 
 	Describe("runConfigImport", func() {

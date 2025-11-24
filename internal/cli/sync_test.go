@@ -59,10 +59,48 @@ var _ = Describe("Sync command", func() {
 	})
 
 	Describe("runConfigSyncPull", func() {
-		It("should fail if sync not initialized", func() {
-			err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "pull"})
+		It("should fail pull if sync not initialized", func() {
+			// Create config without sync
+			cfg := &config.Config{Version: "1"}
+			err := config.SaveConfig(cfgFile, cfg)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "pull"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("sync not initialized"))
+		})
+
+		It("should fail push if token missing", func() {
+			cfg := &config.Config{
+				Version: "1",
+				Sync: &config.SyncConfig{
+					GistID: "gist123",
+				},
+			}
+			err := config.SaveConfig(cfgFile, cfg)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Ensure env var is unset
+			os.Unsetenv("ENTRY_GITHUB_TOKEN")
+
+			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "push"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("token not found"))
+		})
+
+		It("should fail pull if gist fetch fails", func() {
+			cfg := &config.Config{
+				Version: "1",
+				Sync: &config.SyncConfig{
+					GistID: "nonexistent",
+					Token:  "token",
+				},
+			}
+			err := config.SaveConfig(cfgFile, cfg)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "pull"})
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })

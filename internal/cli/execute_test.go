@@ -328,4 +328,37 @@ var _ = Describe("Execution helpers", func() {
 			Expect(matched).To(BeEmpty())
 		})
 	})
+
+	Describe("executeRules", func() {
+		It("should execute matching rule", func() {
+			rules := []*config.Rule{
+				{Name: "Rule 1", Command: "echo rule1", Extensions: []string{"txt"}},
+			}
+			err := executeRules(exec, rules, "file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("echo rule1"))
+		})
+
+		It("should execute multiple rules with fallthrough", func() {
+			rules := []*config.Rule{
+				{Name: "Rule 1", Command: "echo rule1", Fallthrough: true},
+				{Name: "Rule 2", Command: "echo rule2"},
+			}
+			err := executeRules(exec, rules, "file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("echo rule1"))
+			Expect(outBuf.String()).To(ContainSubstring("echo rule2"))
+		})
+
+		It("should stop execution if fallthrough is false", func() {
+			rules := []*config.Rule{
+				{Name: "Rule 1", Command: "echo rule1", Fallthrough: false},
+				{Name: "Rule 2", Command: "echo rule2"},
+			}
+			err := executeRules(exec, rules, "file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("echo rule1"))
+			Expect(outBuf.String()).NotTo(ContainSubstring("echo rule2"))
+		})
+	})
 })
