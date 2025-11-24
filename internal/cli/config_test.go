@@ -321,6 +321,29 @@ rules:
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cfg.Aliases).NotTo(HaveKey("old"))
 		})
+
+		It("should fail to add existing alias", func() {
+			err := runConfigAliasAdd(rootCmd, "old", "new cmd")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("alias 'old' already exists"))
+		})
+	})
+
+	Describe("runConfigCheck advanced", func() {
+		It("should fail for invalid regex in rule", func() {
+			cfg := &config.Config{
+				Version: "1",
+				Rules: []config.Rule{
+					{Name: "Bad Regex", Regex: "[", Command: "cmd"},
+				},
+			}
+			err := config.SaveConfig(cfgFile, cfg)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = runConfigCheck(rootCmd)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("validation failed"))
+		})
 	})
 
 	Describe("runConfigExport/Import", func() {

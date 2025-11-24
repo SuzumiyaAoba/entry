@@ -296,4 +296,36 @@ var _ = Describe("Execution helpers", func() {
 			Expect(matches).To(BeEmpty())
 		})
 	})
+
+	Describe("matchRules advanced", func() {
+		It("should match rules with fallthrough", func() {
+			cfg := &config.Config{
+				Rules: []config.Rule{
+					{Name: "Rule 1", Extensions: []string{"txt"}, Fallthrough: true, Command: "cmd1"},
+					{Name: "Rule 2", Extensions: []string{"txt"}, Fallthrough: false, Command: "cmd2"},
+					{Name: "Rule 3", Extensions: []string{"txt"}, Command: "cmd3"},
+				},
+			}
+			
+			matched, err := matchRules(cfg, "test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matched).To(HaveLen(2))
+			Expect(matched[0].Name).To(Equal("Rule 1"))
+			Expect(matched[1].Name).To(Equal("Rule 2"))
+		})
+
+		It("should match specific criteria", func() {
+			cfg := &config.Config{
+				Rules: []config.Rule{
+					{Name: "Mime Rule", Mime: "text/plain", Command: "cmd1"},
+					{Name: "Scheme Rule", Scheme: "https", Command: "cmd2"},
+				},
+			}
+
+			// Test no match
+			matched, err := matchRules(cfg, "unknown.xyz")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matched).To(BeEmpty())
+		})
+	})
 })

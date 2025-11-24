@@ -99,6 +99,14 @@ var _ = Describe("History", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should handle save error", func() {
+		// Set invalid path
+		history.SetHistoryPath("/invalid/path/history.json")
+		
+		err := history.AddEntry("cmd", "rule")
+		Expect(err).To(HaveOccurred())
+	})
+
 	Describe("GetHistoryPath", func() {
 		It("should return default path", func() {
 			history.SetHistoryPath("")

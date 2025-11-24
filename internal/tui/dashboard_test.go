@@ -2,8 +2,10 @@ package tui_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/SuzumiyaAoba/entry/internal/config"
+	"github.com/SuzumiyaAoba/entry/internal/history"
 	"github.com/SuzumiyaAoba/entry/internal/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	. "github.com/onsi/ginkgo/v2"
@@ -165,83 +167,102 @@ var _ = Describe("Dashboard", func() {
 	})
 
 	Describe("RuleItem", func() {
-		It("should generate correct description", func() {
-			rule := config.Rule{
-				Command:    "cmd",
-				Extensions: []string{"txt", "md"},
-				Regex:      "^test",
-				Script:     "script",
-			}
-			item := tui.RuleItem{Rule: rule}
-			desc := item.Description()
-			Expect(desc).To(ContainSubstring("[txt, md]"))
-			Expect(desc).To(ContainSubstring("Regex: ^test"))
-			Expect(desc).To(ContainSubstring("JS"))
-			Expect(desc).To(ContainSubstring("-> cmd"))
+		It("should return correct title", func() {
+			item := tui.RuleItem{Rule: config.Rule{Name: "Test Rule", Command: "cmd"}}
+			Expect(item.Title()).To(Equal("Test Rule"))
+
+			itemNoName := tui.RuleItem{Rule: config.Rule{Command: "cmd"}}
+			Expect(itemNoName.Title()).To(Equal("cmd"))
 		})
 
-		It("should use command as description if no other info", func() {
-			rule := config.Rule{Command: "cmd"}
-			item := tui.RuleItem{Rule: rule}
-			Expect(item.Description()).To(Equal("cmd"))
+		It("should return correct description", func() {
+			// Test with extensions
+			item := tui.RuleItem{Rule: config.Rule{Extensions: []string{"txt", "md"}, Command: "cat"}}
+			Expect(item.Description()).To(ContainSubstring("[txt, md]"))
+			Expect(item.Description()).To(ContainSubstring("-> cat"))
+
+			// Test with regex
+			itemRegex := tui.RuleItem{Rule: config.Rule{Regex: ".*", Command: "grep"}}
+			Expect(itemRegex.Description()).To(ContainSubstring("Regex: .*"))
+
+			// Test with script
+			itemScript := tui.RuleItem{Rule: config.Rule{Script: "true", Command: "cmd"}}
+			Expect(itemScript.Description()).To(ContainSubstring("JS"))
+
+			// Test with command only
+			itemCmd := tui.RuleItem{Rule: config.Rule{Command: "ls"}}
+			Expect(itemCmd.Description()).To(Equal("ls"))
+		})
+
+		It("should return correct filter value", func() {
+			item := tui.RuleItem{Rule: config.Rule{Name: "Name", Command: "cmd"}}
+			Expect(item.FilterValue()).To(ContainSubstring("Name"))
+			Expect(item.FilterValue()).To(ContainSubstring("cmd"))
+		})
+	})
+
+	Describe("HistoryItem", func() {
+		It("should return correct title and description", func() {
+			entry := history.HistoryEntry{
+				Command:   "ls -la",
+				RuleName:  "List",
+				Timestamp: time.Now(),
+			}
+			item := tui.HistoryItem{Entry: entry}
+
+			Expect(item.Title()).To(Equal("ls -la"))
+			Expect(item.Description()).To(ContainSubstring("List"))
+			Expect(item.Description()).To(ContainSubstring(entry.Timestamp.Format("2006-01-02")))
+			Expect(item.FilterValue()).To(Equal("ls -la"))
 		})
 	})
 
 	Describe("Update interactions", func() {
-		It("should move rule up", func() {
-			// Select second rule
-			m.RulesList.Select(1)
-			
-			// Move up
-			msg := tea.KeyMsg{Type: tea.KeyUp, Alt: false, Runes: []rune{'K'}} // Shift+Up is usually handled as separate key or mapped
-			// In our keymap: MoveUp: key.WithKeys("shift+up", "K")
-			// Let's use "K"
-			msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'K'}}
-			
-			newM, _ := m.Update(msg)
-			m = newM.(tui.Model)
-			
-			Expect(m.Cfg.Rules[0].Name).To(Equal("Rule 2"))
-			Expect(m.Cfg.Rules[1].Name).To(Equal("Rule 1"))
-		})
+		It("should handle move up/down", func() {
+			cfg := &config.Config{
+				Rules: []config.Rule{
+					{Name: "Rule 1", Command: "cmd1"},
+					{Name: "Rule 2", Command: "cmd2"},
+				},
+			}
+			m, _ = tui.NewModel(cfg, "config.yml")
+			m.Width = 100
+			m.Height = 100
+			m.RulesList.SetSize(100, 100)
 
-		It("should move rule down", func() {
-			// Select first rule
-			m.RulesList.Select(0)
-			
-			// Move down using "J"
-			msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'J'}}
-			
+			// Select second item
+			m.RulesList.Select(1)
+
+			// Move Up
+			msg := tea.KeyMsg{Type: tea.KeyShiftUp}
 			newM, _ := m.Update(msg)
 			m = newM.(tui.Model)
-			
 			Expect(m.Cfg.Rules[0].Name).To(Equal("Rule 2"))
 			Expect(m.Cfg.Rules[1].Name).To(Equal("Rule 1"))
+
+			// Move Down
+			msg = tea.KeyMsg{Type: tea.KeyShiftDown}
+			newM, _ = m.Update(msg)
+			m = newM.(tui.Model)
+			Expect(m.Cfg.Rules[0].Name).To(Equal("Rule 1"))
+			Expect(m.Cfg.Rules[1].Name).To(Equal("Rule 2"))
 		})
 
 		It("should handle edit form submission", func() {
+			cfg := &config.Config{Rules: []config.Rule{}}
+			m, _ = tui.NewModel(cfg, "config.yml")
+			
 			// Enter add mode
 			msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}
 			newM, _ := m.Update(msg)
 			m = newM.(tui.Model)
-			
-			// We can't easily drive the Huh form programmatically in a unit test without complex mocking.
-			// However, we can simulate the completion state.
-			// But `Update` checks `m.EditForm.State`. We can't set that directly as `EditForm` is internal to `huh`.
-			// Wait, `EditForm` is `*huh.Form` which is exported. But `State` field might not be settable directly if it's not exported or if we can't reach it.
-			// Actually `huh.Form` struct fields are not all exported.
-			// So testing the form completion logic might be hard.
-			// But we can test the logic *after* form completion if we could trigger it.
-			
-			// Alternative: We can test the logic by manually setting the state if possible, or skip deep form testing and rely on integration tests (which we don't have easily here).
-			// Let's try to at least cover the "Abort" path if we can send Esc?
-			
-			// Send Ctrl+C to form (Esc might be captured by input fields or not configured to abort)
+			Expect(m.Active).To(Equal(tui.TabEdit))
+			Expect(m.EditForm).NotTo(BeNil())
+
+			// Abort
 			msg = tea.KeyMsg{Type: tea.KeyCtrlC}
 			newM, _ = m.Update(msg)
 			m = newM.(tui.Model)
-			
-			// Should return to rules
 			Expect(m.Active).To(Equal(tui.TabRules))
 			Expect(m.EditForm).To(BeNil())
 		})
