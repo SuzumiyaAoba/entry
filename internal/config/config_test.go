@@ -166,6 +166,35 @@ var _ = Describe("SaveConfig", func() {
 		Expect(string(content)).To(ContainSubstring("version: \"1\""))
 		Expect(string(content)).To(ContainSubstring("command: echo"))
 	})
+
+	It("should return error if directory is not writable", func() {
+		// Create read-only directory
+		readOnlyDir := filepath.Join(tmpDir, "readonly")
+		err := os.Mkdir(readOnlyDir, 0555)
+		Expect(err).NotTo(HaveOccurred())
+
+		path := filepath.Join(readOnlyDir, "config.yml")
+		cfg := &config.Config{Version: "1"}
+		err = SaveConfig(path, cfg)
+		Expect(err).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("LoadConfig Error Paths", func() {
+	var tmpDir string
+	BeforeEach(func() {
+		tmpDir = GinkgoT().TempDir()
+	})
+
+	It("should return error for invalid YAML", func() {
+		path := filepath.Join(tmpDir, "invalid.yml")
+		err := os.WriteFile(path, []byte("invalid: yaml: :"), 0644)
+		Expect(err).NotTo(HaveOccurred())
+
+		_, err = LoadConfig(path)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("yaml: "))
+	})
 })
 
 var _ = Describe("ValidateRegex", func() {

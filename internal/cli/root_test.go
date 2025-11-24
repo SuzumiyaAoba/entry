@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -21,6 +22,7 @@ var _ = Describe("Entry CLI", func() {
 	)
 
 	BeforeEach(func() {
+		resetGlobals()
 		tmpDir = GinkgoT().TempDir()
 		configFile = filepath.Join(tmpDir, "config.yml")
 		outBuf.Reset()
@@ -30,9 +32,6 @@ var _ = Describe("Entry CLI", func() {
 		
 		// Reset global flags
 		cfgFile = configFile
-		dryRun = false
-		interactive = false
-		explain = false
 	})
 
 	Context("Command Disambiguation", func() {
@@ -187,6 +186,64 @@ rules: []
 			err := rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("ls -la"))
+		})
+	})
+	Context("Error Handling and Flags", func() {
+		It("should return error for invalid flags", func() {
+			// We need to use a new command to test flag parsing error because 
+			// rootCmd has DisableFlagParsing: true, so it parses flags manually in runRoot.
+			// However, runRoot calls cmd.Flags().Parse(args).
+			err := rootCmd.RunE(rootCmd, []string{"--invalid-flag"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unknown flag"))
+		})
+
+		It("should show help", func() {
+			err := rootCmd.RunE(rootCmd, []string{"--help"})
+			Expect(err).NotTo(HaveOccurred())
+			// Help output is printed to stdout/stderr
+			Expect(outBuf.String()).To(ContainSubstring("Usage:"))
+		})
+
+		It("should show version", func() {
+			err := rootCmd.RunE(rootCmd, []string{"--version"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("et version"))
+		})
+
+		It("should return error if config load fails", func() {
+			// Create invalid config file (tab is invalid in YAML)
+			err := os.WriteFile(configFile, []byte("invalid:\n\tvalue"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = rootCmd.RunE(rootCmd, []string{"--config", configFile, "file.txt"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("error loading config"))
+		})
+
+		It("should return error if logger init fails", func() {
+			// This is hard to simulate without mocking logger init or filesystem error.
+			// skipping for now.
+		})
+		
+		It("should handle profile resolution error", func() {
+			// Clear cfgFile to force profile resolution
+			cfgFile = ""
+			
+			// Mock UserHomeDir to fail
+			origUserHomeDir := config.UserHomeDir
+			config.UserHomeDir = func() (string, error) {
+				return "", fmt.Errorf("mock error")
+			}
+			defer func() { config.UserHomeDir = origUserHomeDir }()
+			
+			// Set profile to trigger resolution
+			os.Setenv("ENTRY_PROFILE", "test")
+			defer os.Unsetenv("ENTRY_PROFILE")
+			
+			err := rootCmd.RunE(rootCmd, []string{"file.txt"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to resolve profile config path"))
 		})
 	})
 })

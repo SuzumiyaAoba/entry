@@ -82,4 +82,36 @@ var _ = Describe("Client", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("failed to get gist"))
 	})
+
+	It("should handle network error", func() {
+		// Create client pointing to closed server
+		// We need to set the URL *before* creating the client
+		oldURL := sync.GitHubAPIURL
+		sync.GitHubAPIURL = "http://127.0.0.1:0" // Invalid port
+		defer func() { sync.GitHubAPIURL = oldURL }()
+		
+		badClient := sync.NewClient("token")
+		
+		_, err := badClient.GetGist("gist123")
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should handle invalid gist content", func() {
+		// Mock server returning invalid JSON for content
+		server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"files": {
+					"config.yml": {
+						"content": "invalid: yaml: :"
+					}
+				}
+			}`))
+		})
+
+		_, err := client.GetGist("gist123")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("failed to parse config"))
+	})
 })

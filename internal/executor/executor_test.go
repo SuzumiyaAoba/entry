@@ -30,6 +30,19 @@ var _ = Describe("Execute", func() {
 		Entry("Command failure", "false", "test.txt", true),
 	)
 
+	It("should return error for invalid template syntax", func() {
+		exec := NewExecutor(GinkgoWriter, false)
+		err := exec.Execute("echo {{.File", "test.txt", ExecutionOptions{})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("template"))
+	})
+
+	It("should return error for execution failure", func() {
+		exec := NewExecutor(GinkgoWriter, false)
+		err := exec.Execute("false", "test.txt", ExecutionOptions{})
+		Expect(err).To(HaveOccurred())
+	})
+
 	It("should print command in dry run mode", func() {
 		// We can't easily capture stdout here without redirecting it,
 		// but we can check that it doesn't error and doesn't run the command (if we could verify that).

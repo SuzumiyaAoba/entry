@@ -87,7 +87,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 
 	// Handle version flag manually
 	if versionVal, _ := cmd.Flags().GetBool("version"); versionVal {
-		fmt.Printf("et version %s\n", Version)
+		fmt.Fprintf(cmd.OutOrStdout(), "et version %s\n", Version)
 		return nil
 	}
 

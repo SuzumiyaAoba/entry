@@ -71,6 +71,9 @@ func GetConfigPath(path string) (string, error) {
 	return GetConfigPathWithProfile(path, "")
 }
 
+// UserHomeDir is a variable to allow mocking in tests
+var UserHomeDir = os.UserHomeDir
+
 // GetConfigPathWithProfile returns the config file path for a specific profile
 // If profile is empty, returns the default config path
 func GetConfigPathWithProfile(path string, profile string) (string, error) {
@@ -78,7 +81,7 @@ func GetConfigPathWithProfile(path string, profile string) (string, error) {
 		return path, nil
 	}
 
-	home, err := os.UserHomeDir()
+	home, err := UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home dir: %w", err)
 	}

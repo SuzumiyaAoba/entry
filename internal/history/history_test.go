@@ -76,4 +76,25 @@ var _ = Describe("History", func() {
 		_, err = os.Stat(nestedFile)
 		Expect(err).NotTo(HaveOccurred())
 	})
+
+	It("should return error if history file is corrupted", func() {
+		err := os.WriteFile(historyFile, []byte("invalid json"), 0644)
+		Expect(err).NotTo(HaveOccurred())
+
+		_, err = history.LoadHistory()
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should return error if history file is not writable", func() {
+		// Create read-only directory
+		readOnlyDir := filepath.Join(tmpDir, "readonly")
+		err := os.Mkdir(readOnlyDir, 0555)
+		Expect(err).NotTo(HaveOccurred())
+
+		readOnlyFile := filepath.Join(readOnlyDir, "history.json")
+		history.SetHistoryPath(readOnlyFile)
+
+		err = history.AddEntry("cmd", "rule")
+		Expect(err).To(HaveOccurred())
+	})
 })
