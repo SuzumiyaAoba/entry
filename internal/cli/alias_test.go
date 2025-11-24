@@ -59,4 +59,21 @@ var _ = Describe("Alias command", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cfg.Aliases).NotTo(HaveKey("ll"))
 	})
+
+	It("should fail if alias does not exist", func() {
+		err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "alias", "remove", "nonexistent"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("alias 'nonexistent' not found"))
+	})
+
+	It("should fail if aliases map is nil", func() {
+		// Setup config with nil aliases
+		cfg := &config.Config{Version: "1"}
+		err := config.SaveConfig(cfgFile, cfg)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "alias", "remove", "foo"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("alias 'foo' not found"))
+	})
 })
