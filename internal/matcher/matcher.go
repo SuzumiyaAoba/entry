@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/SuzumiyaAoba/entry/internal/config"
+	"github.com/dop251/goja"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/samber/lo"
 )
@@ -119,8 +120,20 @@ func matchRule(rule *config.Rule, filename string) (bool, error) {
 
 	// Check Script
 	if rule.Script != "" {
-		return true, nil
+		return matchScript(rule.Script, filename)
 	}
 
 	return false, nil
+}
+
+func matchScript(script string, filename string) (bool, error) {
+	vm := goja.New()
+	vm.Set("file", filename)
+	
+	val, err := vm.RunString(script)
+	if err != nil {
+		return false, err
+	}
+	
+	return val.ToBoolean(), nil
 }

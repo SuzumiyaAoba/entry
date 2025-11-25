@@ -120,6 +120,35 @@ var _ = Describe("Match", func() {
 		Entry("Match Script", "any.file", "run script", false),
 	)
 
+	Describe("Script Matching", func() {
+		It("should match using JS script", func() {
+			scriptRules := []config.Rule{
+				{Script: "file.endsWith('.js')", Command: "node"},
+			}
+			matches, err := Match(scriptRules, "test.js")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matches).To(HaveLen(1))
+			Expect(matches[0].Command).To(Equal("node"))
+		})
+
+		It("should not match if JS script returns false", func() {
+			scriptRules := []config.Rule{
+				{Script: "file.endsWith('.js')", Command: "node"},
+			}
+			matches, err := Match(scriptRules, "test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matches).To(BeEmpty())
+		})
+
+		It("should return error if JS script is invalid", func() {
+			scriptRules := []config.Rule{
+				{Script: "invalid syntax )))", Command: "node"},
+			}
+			_, err := Match(scriptRules, "test.js")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("MatchAll", func() {
 		It("should return all matching rules", func() {
 			multiRules := []config.Rule{
