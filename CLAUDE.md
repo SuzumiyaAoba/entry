@@ -164,7 +164,6 @@ The CLI layer in `internal/cli/` is organized into focused handler files:
 ## Testing Framework
 
 Tests use Ginkgo/Gomega BDD framework. Test files are located alongside their source files with `_test.go` suffix:
-
 - `internal/cli/root_test.go` - Root command tests
 - `internal/cli/*_test.go` - CLI command tests (config, sync, history, etc.)
 - `internal/config/config_test.go` - Config loading and validation
@@ -199,7 +198,7 @@ Tests use Ginkgo/Gomega BDD framework. Test files are located alongside their so
 
 ### Manual Flag Parsing
 
-The root command uses `DisableFlagParsing: true` and manually parses flags in `root.go:79-120`. This allows passing arbitrary arguments through to executed commands without Cobra intercepting them. When modifying flag handling, ensure the manual parsing logic stays synchronized with flag definitions.
+The root command uses `DisableFlagParsing: true` and manually parses flags in `internal/cli/root.go:79-120`. This allows passing arbitrary arguments through to executed commands without Cobra intercepting them. When modifying flag handling, ensure the manual parsing logic stays synchronized with flag definitions.
 
 **Important**: The manual parsing handles subcommand detection by checking for `:` prefix (e.g., `:config`, `:dashboard`) which are registered as Cobra subcommands. Regular commands without `:` fall through to file/command execution.
 

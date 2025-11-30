@@ -98,6 +98,32 @@ et --dry-run document.pdf
 # Output: open -a Preview document.pdf
 ```
 
+### Match Check (`:match`)
+
+Check if a file matches any rule without executing it:
+
+```bash
+et :match document.pdf
+# Output: Matched rule: PDF Reader
+```
+
+### Shell Completion (`:completion`)
+
+Generate shell completion scripts for bash, zsh, fish, or powershell:
+
+```bash
+# For zsh
+et :completion zsh > _et
+```
+
+### Version (`:version`)
+
+Print the version number of entry:
+
+```bash
+et :version
+```
+
 ## Configuration
 
 The configuration file is located at `~/.config/entry/config.yml`.
@@ -144,6 +170,15 @@ et :config alias remove ll
 # Import/Export Configuration
 et :config export backup.yml
 et :config import backup.yml
+
+# Check Configuration
+et :config check
+
+# List all rules
+et :config list
+
+# Open config file in default editor
+et :config open
 ```
 
 ### Remote Sync
