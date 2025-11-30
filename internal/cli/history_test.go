@@ -80,5 +80,32 @@ var _ = Describe("History command", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to load history"))
 		})
+
+		It("should select and re-run command", func() {
+			// Add history
+			err := history.AddEntry("test-file.txt", "Text Rule")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Mock selector
+			originalSelector := CurrentHistorySelector
+			defer func() { CurrentHistorySelector = originalSelector }()
+			
+			CurrentHistorySelector = func(entries []history.HistoryEntry) (history.HistoryEntry, error) {
+				return entries[0], nil
+			}
+
+			// Run history command
+			// It will fail to execute "et" because it's not in PATH, but that's expected.
+			err = runHistory(rootCmd)
+			
+			// We expect "Re-running: test-file.txt"
+			Expect(outBuf.String()).To(ContainSubstring("Re-running: test-file.txt"))
+			
+			// The error might be "exec: \"et\": executable file not found in $PATH"
+			// We accept this error as proof it tried to execute.
+			if err != nil {
+				Expect(err.Error()).To(ContainSubstring("executable file not found"))
+			}
+		})
 	})
 })

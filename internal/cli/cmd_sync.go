@@ -45,41 +45,41 @@ func init() {
 	configSyncCmd.AddCommand(configSyncPullCmd)
 }
 
-func runConfigSyncInit(cmd *cobra.Command) error {
-	cfg, err := config.LoadConfig(cfgFile)
-	if err != nil {
-		return err
-	}
+// SyncInitInput holds the input gathered from the user
+type SyncInitInput struct {
+	CreateNew  bool
+	GistID     string
+	Token      string
+	StoreToken bool
+}
 
-	var (
-		gistID string
-		token  string
-		create bool
-	)
+// getSyncInitInput gathers input from the user for sync initialization
+var getSyncInitInput = func() (SyncInitInput, error) {
+	var input SyncInitInput
 
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().
 				Title("Create new Gist?").
 				Description("If no, you must provide an existing Gist ID").
-				Value(&create),
+				Value(&input.CreateNew),
 		),
 	)
 
 	if err := form.Run(); err != nil {
-		return err
+		return input, err
 	}
 
-	if !create {
+	if !input.CreateNew {
 		form = huh.NewForm(
 			huh.NewGroup(
 				huh.NewInput().
 					Title("Gist ID").
-					Value(&gistID),
+					Value(&input.GistID),
 			),
 		)
 		if err := form.Run(); err != nil {
-			return err
+			return input, err
 		}
 	}
 
@@ -89,17 +89,53 @@ func runConfigSyncInit(cmd *cobra.Command) error {
 				Title("GitHub Token").
 				Description("Required for private Gists or creating new ones").
 				EchoMode(huh.EchoModePassword).
-				Value(&token),
+				Value(&input.Token),
 		),
 	)
 
 	if err := form.Run(); err != nil {
+		return input, err
+	}
+
+	confirm := huh.NewConfirm().
+		Title("Store token in config?").
+		Description("WARNING: This is insecure as the config file is plain text.").
+		Value(&input.StoreToken)
+	
+	if err := confirm.Run(); err != nil {
+		return input, err
+	}
+
+	return input, nil
+}
+
+// SyncClient interface for mocking
+type SyncClient interface {
+	CreateGist(cfg *config.Config, public bool) (string, error)
+	UpdateGist(gistID string, cfg *config.Config) error
+	GetGist(gistID string) (*config.Config, error)
+}
+
+// newSyncClient creates a new sync client
+var newSyncClient = func(token string) SyncClient {
+	return sync.NewClient(token)
+}
+
+func runConfigSyncInit(cmd *cobra.Command) error {
+	cfg, err := config.LoadConfig(cfgFile)
+	if err != nil {
 		return err
 	}
 
-	client := sync.NewClient(token)
+	input, err := getSyncInitInput()
+	if err != nil {
+		return err
+	}
 
-	if create {
+	client := newSyncClient(input.Token)
+	gistID := input.GistID
+
+	if input.CreateNew {
 		id, err := client.CreateGist(cfg, false) // Default to private
 		if err != nil {
 			return err
@@ -112,22 +148,9 @@ func runConfigSyncInit(cmd *cobra.Command) error {
 		cfg.Sync = &config.SyncConfig{}
 	}
 	cfg.Sync.GistID = gistID
-	// We don't store token by default for security, but user can add it manually if they want.
-	// Or we can store it if they want.
-	// For now, let's ask.
-	
-	var storeToken bool
-	confirm := huh.NewConfirm().
-		Title("Store token in config?").
-		Description("WARNING: This is insecure as the config file is plain text.").
-		Value(&storeToken)
-	
-	if err := confirm.Run(); err != nil {
-		return err
-	}
 
-	if storeToken {
-		cfg.Sync.Token = token
+	if input.StoreToken {
+		cfg.Sync.Token = input.Token
 	} else {
 		fmt.Fprintln(cmd.OutOrStdout(), "Token not stored. You will need to provide it via ENTRY_GITHUB_TOKEN env var.")
 	}

@@ -313,14 +313,17 @@ func runConfigEdit(cmd *cobra.Command) error {
 
 	// Create edit form
 	var (
-		name       = rule.Name
-		extensions = strings.Join(rule.Extensions, ",")
-		regex      = rule.Regex
-		mime       = rule.Mime
-		scheme     = rule.Scheme
-		command    = rule.Command
-		background = rule.Background
-		terminal   = rule.Terminal
+		name        = rule.Name
+		extensions  = strings.Join(rule.Extensions, ",")
+		regex       = rule.Regex
+		mime        = rule.Mime
+		scheme      = rule.Scheme
+		command     = rule.Command
+		background  = rule.Background
+		terminal    = rule.Terminal
+		isFallthrough = rule.Fallthrough
+		osList      = strings.Join(rule.OS, ",")
+		script      = rule.Script
 	)
 
 	editForm := huh.NewForm(
@@ -349,6 +352,11 @@ func runConfigEdit(cmd *cobra.Command) error {
 				Title("Scheme").
 				Description("URL scheme to match (e.g., https, ftp)").
 				Value(&scheme),
+			
+			huh.NewInput().
+				Title("Script").
+				Description("JavaScript condition/command").
+				Value(&script),
 		),
 		huh.NewGroup(
 			huh.NewInput().
@@ -361,6 +369,11 @@ func runConfigEdit(cmd *cobra.Command) error {
 					}
 					return nil
 				}),
+			
+			huh.NewInput().
+				Title("OS Constraints").
+				Description("Comma-separated list of OS (e.g., darwin,linux)").
+				Value(&osList),
 
 			huh.NewConfirm().
 				Title("Background").
@@ -371,6 +384,11 @@ func runConfigEdit(cmd *cobra.Command) error {
 				Title("Terminal").
 				Description("Require terminal for execution?").
 				Value(&terminal),
+			
+			huh.NewConfirm().
+				Title("Fallthrough").
+				Description("Continue matching other rules?").
+				Value(&isFallthrough),
 		),
 	)
 
@@ -399,6 +417,9 @@ func runConfigEdit(cmd *cobra.Command) error {
 	rule.Command = command
 	rule.Background = background
 	rule.Terminal = terminal
+	rule.Fallthrough = isFallthrough
+	rule.OS = splitAndTrim(osList)
+	rule.Script = script
 
 	// Save config
 	if err := config.SaveConfig(cfgFile, cfg); err != nil {

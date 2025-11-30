@@ -13,7 +13,6 @@ import (
 var _ = Describe("Sync command", func() {
 	var (
 		tmpDir  string
-		cfgFile string
 		outBuf  bytes.Buffer
 	)
 
@@ -103,4 +102,114 @@ var _ = Describe("Sync command", func() {
 			Expect(err).To(HaveOccurred())
 		})
 	})
+	Describe("runConfigSyncInit", func() {
+		var (
+			originalInputProvider func() (SyncInitInput, error)
+			originalClientFactory func(token string) SyncClient
+		)
+
+		BeforeEach(func() {
+			originalInputProvider = getSyncInitInput
+			originalClientFactory = newSyncClient
+		})
+
+		AfterEach(func() {
+			getSyncInitInput = originalInputProvider
+			newSyncClient = originalClientFactory
+		})
+
+		It("should fail if config load fails", func() {
+			// Corrupt config file
+			err := os.WriteFile(cfgFile, []byte("["), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = runConfigSyncInit(rootCmd)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should initialize with existing Gist", func() {
+			// Mock input
+			getSyncInitInput = func() (SyncInitInput, error) {
+				return SyncInitInput{
+					CreateNew:  false,
+					GistID:     "existing-gist-id",
+					Token:      "test-token",
+					StoreToken: true,
+				}, nil
+			}
+
+			// Mock client
+			newSyncClient = func(token string) SyncClient {
+				return &mockSyncClient{}
+			}
+
+			err := runConfigSyncInit(rootCmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("Sync initialized successfully"))
+
+			// Verify config
+			cfg, err := config.LoadConfig(cfgFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Sync.GistID).To(Equal("existing-gist-id"))
+			Expect(cfg.Sync.Token).To(Equal("test-token"))
+		})
+
+		It("should initialize by creating new Gist", func() {
+			// Mock input
+			getSyncInitInput = func() (SyncInitInput, error) {
+				return SyncInitInput{
+					CreateNew:  true,
+					Token:      "test-token",
+					StoreToken: false,
+				}, nil
+			}
+
+			// Mock client
+			newSyncClient = func(token string) SyncClient {
+				return &mockSyncClient{
+					createGistFunc: func(cfg *config.Config, public bool) (string, error) {
+						return "new-gist-id", nil
+					},
+				}
+			}
+
+			err := runConfigSyncInit(rootCmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("Created new Gist: new-gist-id"))
+			Expect(outBuf.String()).To(ContainSubstring("Token not stored"))
+
+			// Verify config
+			cfg, err := config.LoadConfig(cfgFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Sync.GistID).To(Equal("new-gist-id"))
+			Expect(cfg.Sync.Token).To(BeEmpty())
+		})
+	})
 })
+
+type mockSyncClient struct {
+	createGistFunc func(cfg *config.Config, public bool) (string, error)
+	updateGistFunc func(gistID string, cfg *config.Config) error
+	getGistFunc    func(gistID string) (*config.Config, error)
+}
+
+func (m *mockSyncClient) CreateGist(cfg *config.Config, public bool) (string, error) {
+	if m.createGistFunc != nil {
+		return m.createGistFunc(cfg, public)
+	}
+	return "mock-gist-id", nil
+}
+
+func (m *mockSyncClient) UpdateGist(gistID string, cfg *config.Config) error {
+	if m.updateGistFunc != nil {
+		return m.updateGistFunc(gistID, cfg)
+	}
+	return nil
+}
+
+func (m *mockSyncClient) GetGist(gistID string) (*config.Config, error) {
+	if m.getGistFunc != nil {
+		return m.getGistFunc(gistID)
+	}
+	return &config.Config{}, nil
+}

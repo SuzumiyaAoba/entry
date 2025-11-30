@@ -88,6 +88,12 @@ func executeSelectedOption(cfg *config.Config, exec *executor.Executor, selected
 	return err
 }
 
+// SelectorFunc is the function signature for selecting an option
+type SelectorFunc func(options []Option, filename string) (Option, error)
+
+// CurrentSelector is the current selector function, can be swapped for testing
+var CurrentSelector SelectorFunc = showOptionSelector
+
 func handleInteractive(cfg *config.Config, exec *executor.Executor, filename string) error {
 	// Build options from matched rules and system default
 	options, err := buildInteractiveOptions(cfg, filename)
@@ -100,7 +106,7 @@ func handleInteractive(cfg *config.Config, exec *executor.Executor, filename str
 	}
 
 	// Show selector and get user's choice
-	selected, err := showOptionSelector(options, filename)
+	selected, err := CurrentSelector(options, filename)
 	if err != nil {
 		return err
 	}

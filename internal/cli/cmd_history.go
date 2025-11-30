@@ -33,6 +33,46 @@ var historyClearCmd = &cobra.Command{
 	},
 }
 
+// HistoryOption represents an option in the history selection menu
+type HistoryOption struct {
+	Label string
+	Entry history.HistoryEntry
+}
+
+// showHistorySelector displays an interactive selector for history entries
+func showHistorySelector(entries []history.HistoryEntry) (history.HistoryEntry, error) {
+	var options []huh.Option[HistoryOption]
+	for _, entry := range entries {
+		label := fmt.Sprintf("%s  %s (%s)", 
+			entry.Timestamp.Format("2006-01-02 15:04:05"), 
+			entry.Command, 
+			entry.RuleName)
+		options = append(options, huh.NewOption(label, HistoryOption{Label: label, Entry: entry}))
+	}
+
+	var selected HistoryOption
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[HistoryOption]().
+				Title("Select a command to re-run").
+				Options(options...).
+				Value(&selected),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return history.HistoryEntry{}, err
+	}
+
+	return selected.Entry, nil
+}
+
+// HistorySelectorFunc is the function signature for selecting a history entry
+type HistorySelectorFunc func(entries []history.HistoryEntry) (history.HistoryEntry, error)
+
+// CurrentHistorySelector is the current selector function, can be swapped for testing
+var CurrentHistorySelector HistorySelectorFunc = showHistorySelector
+
 func runHistory(cmd *cobra.Command) error {
 	entries, err := history.LoadHistory()
 	if err != nil {
@@ -44,79 +84,13 @@ func runHistory(cmd *cobra.Command) error {
 		return nil
 	}
 
-	// Build options for selection
-	type historyOption struct {
-		Label string
-		Entry history.HistoryEntry
-	}
-
-	var options []huh.Option[historyOption]
-	for _, entry := range entries {
-		label := fmt.Sprintf("%s  %s (%s)", 
-			entry.Timestamp.Format("2006-01-02 15:04:05"), 
-			entry.Command, 
-			entry.RuleName)
-		options = append(options, huh.NewOption(label, historyOption{Label: label, Entry: entry}))
-	}
-
-	var selected historyOption
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[historyOption]().
-				Title("Select a command to re-run").
-				Options(options...).
-				Value(&selected),
-		),
-	)
-
-	if err := form.Run(); err != nil {
+	selectedEntry, err := CurrentHistorySelector(entries)
+	if err != nil {
 		return err
 	}
 
-	// Re-run the command
-	// We need to construct a new root command execution or just call the handler
-	// Calling the handler is tricky because we need config and executor.
-	// Simplest way is to print the command and let user run it, or use executor to run it as if it was passed.
-	// But wait, the history stores the "file" or "command" passed to `et`.
-	// So we should basically re-invoke the logic for that file.
-	
-	fmt.Fprintf(cmd.OutOrStdout(), "Re-running: %s\n", selected.Entry.Command)
-	
-	// We can't easily re-invoke the whole CLI flow from here without circular deps or refactoring.
-	// But we can exec a new process, or just tell the user.
-	// Better: return the command to the caller? No, RunE returns error.
-	
-	// Let's try to execute it using the current process's logic if possible.
-	// We are in `cli` package. We can call `handleFileExecution` or `handleCommandExecution`.
-	// We need `cfg` and `exec`.
-	
-	// Load config again
-	// Note: This duplicates logic from root.go, but it's acceptable for now.
-	// Ideally we'd refactor `runRoot` to be more reusable.
-	
-	// For now, let's just print it and maybe execute it if it's a simple file.
-	// Actually, `et` is about opening files. So `selected.Entry.Command` is likely a filename.
-	
-	// Let's try to execute it.
-	// We need to get the config and executor.
-	// Since we are inside `cli`, we can access `cfgFile` var but we need to load it.
-	
-	// This part is a bit hacky, but let's do it.
-	// We will just print it for now as "Re-running" and then exit? 
-	// No, the user expects it to run.
-	
-	// Let's spawn a new `et` process? That's safe.
-	// Or just use `executor` to run the command if we knew what rule it matched.
-	// But we only stored the RuleName for display.
-	
-	// Let's just output the command to stdout? No.
-	
-	// Let's try to re-run the root command logic.
-	// We can't call `runRoot` easily.
-	
-	// Let's use `os/exec` to call `et` again with the argument.
-	// This is the most robust way to ensure all logic (rules, profiles etc) is applied.
+	fmt.Fprintf(cmd.OutOrStdout(), "Re-running: %s\n", selectedEntry.Command)
 	
 	exec := executor.NewExecutor(cmd.OutOrStdout(), false)
-	return exec.ExecuteCommand("et", []string{selected.Entry.Command})
+	return exec.ExecuteCommand("et", []string{selectedEntry.Command})
 }

@@ -184,36 +184,24 @@ var _ = Describe("Execution helpers", func() {
 		})
 
 		It("should handle script execution", func() {
-			// Mock executor script handling
-			// Since we are using real executor with dry-run, we can't easily mock the internal script execution logic 
-			// without mocking the executor itself or the JS runtime.
-			// However, the `Executor` struct in `internal/executor` likely has methods we can't easily swap out in this test 
-			// because `executeRule` takes a concrete `*executor.Executor`.
-			
-			// Looking at `execute.go`: `scriptCmd, matched, err := exec.ExecuteScript(rule.Script, filename)`
-			// If `executor` package doesn't support mocking, we might need to rely on the fact that `ExecuteScript` 
-			// runs actual JS if available or fails.
-			// If we can't run JS in this environment, we might skip this or refactor code to be testable.
-			// Assuming `goja` is used and works.
-			
+			// We can use a real script since we have goja available
 			rule := &config.Rule{
-				Script: "true", // Simple script that returns true?
-				// The actual JS runtime expects specific return values.
-				// If we can't easily test this without a full JS environment setup, we might need to skip or add a simple test case.
-				// Let's assume the executor works and just test the flow in `executeRule`.
-				
-				// Wait, `executeRule` calls `exec.ExecuteScript`.
-				// If we want to test `executeRule` logic (e.g. "Script returned false/null, skipping rule"),
-				// we need `ExecuteScript` to return specific values.
-				
-				// Since we can't mock `exec.ExecuteScript` (it's a method on a struct), 
-				// we have to rely on its behavior.
-				// If we pass a script that returns `false`, it should work.
+				Script:  "file.endsWith('.txt')",
+				Command: "echo script matched",
 			}
-			_ = rule
 			
-			// TODO: Add proper script tests when executor mocking is available or if we can rely on JS engine.
-			// For now, let's add a test for the "no command" case which is logic inside executeRule.
+			// Test match
+			executed, err := executeRule(exec, rule, "test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(executed).To(BeTrue())
+			Expect(outBuf.String()).To(ContainSubstring("echo script matched"))
+			
+			// Test no match
+			outBuf.Reset()
+			executed, err = executeRule(exec, rule, "test.md")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(executed).To(BeFalse())
+			Expect(outBuf.String()).NotTo(ContainSubstring("echo script matched"))
 		})
 		
 		It("should return true if script matches but no command", func() {

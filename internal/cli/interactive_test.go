@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -170,6 +171,74 @@ var _ = Describe("Interactive helpers", func() {
 				}
 			}
 			Expect(found).To(BeFalse())
+		})
+	})
+
+	Describe("handleInteractive", func() {
+		var (
+			testFile string
+			cfg      *config.Config
+			exec     *executor.Executor
+			outBuf   bytes.Buffer
+		)
+
+		BeforeEach(func() {
+			testFile = filepath.Join(tmpDir, "test.txt")
+			err := os.WriteFile(testFile, []byte("content"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			outBuf.Reset()
+			exec = executor.NewExecutor(&outBuf, true)
+			cfg = &config.Config{
+				Rules: []config.Rule{
+					{
+						Name:       "Text Editor",
+						Extensions: []string{"txt"},
+						Command:    "vim {{.File}}",
+					},
+				},
+			}
+		})
+
+		AfterEach(func() {
+			// Restore default selector
+			CurrentSelector = showOptionSelector
+		})
+
+		It("should execute selected option", func() {
+			// Mock selector
+			CurrentSelector = func(options []Option, filename string) (Option, error) {
+				// Find the "Text Editor" option
+				for _, opt := range options {
+					if opt.Label == "Text Editor" {
+						return opt, nil
+					}
+				}
+				return Option{}, fmt.Errorf("option not found")
+			}
+
+			err := handleInteractive(cfg, exec, testFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(outBuf.String()).To(ContainSubstring("vim " + testFile))
+		})
+
+		It("should return error if no matching rules", func() {
+			// Do NOT create the file, so System Default is not added
+			noMatchFile := filepath.Join(tmpDir, "nomatch.xyz")
+			
+			err := handleInteractive(cfg, exec, noMatchFile)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("no matching rules found"))
+		})
+
+		It("should return error if selector fails", func() {
+			CurrentSelector = func(options []Option, filename string) (Option, error) {
+				return Option{}, fmt.Errorf("selection aborted")
+			}
+
+			err := handleInteractive(cfg, exec, testFile)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("selection aborted"))
 		})
 	})
 })

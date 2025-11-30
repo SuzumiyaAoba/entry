@@ -17,6 +17,13 @@ var dashboardCmd = &cobra.Command{
 	},
 }
 
+// runTeaProgram runs the tea program, can be swapped for testing
+var runTeaProgram = func(model tea.Model, opts ...tea.ProgramOption) (tea.Model, error) {
+	fmt.Println("Real runTeaProgram called")
+	p := tea.NewProgram(model, opts...)
+	return p.Run()
+}
+
 func runDashboard(cmd *cobra.Command) error {
 	configPath, err := config.GetConfigPath(cfgFile)
 	if err != nil {
@@ -25,8 +32,10 @@ func runDashboard(cmd *cobra.Command) error {
 
 	cfg, err := config.LoadConfig(cfgFile)
 	if err != nil {
-		// If config doesn't exist, start with empty config
-		cfg = &config.Config{Version: "1"}
+		// Only ignore if file does not exist, but for now let's return error
+		// because swallowing parsing errors is bad.
+		// If the user wants to start fresh, they should ensure no broken config exists.
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	model, err := tui.NewModel(cfg, configPath)
@@ -34,8 +43,7 @@ func runDashboard(cmd *cobra.Command) error {
 		return err
 	}
 
-	p := tea.NewProgram(model, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
+	if _, err := runTeaProgram(model, tea.WithAltScreen()); err != nil {
 		return fmt.Errorf("error running dashboard: %w", err)
 	}
 
