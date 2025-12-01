@@ -28,6 +28,23 @@ Instead of remembering different commands for every file type (`cat`, `open`, `v
 -   **Interactive Editor**: Manage your rules without leaving the terminal.
 -   **YAML Config**: Simple, human-readable configuration file.
 
+## Comparison
+
+Why use `et` over other tools?
+
+| Feature | Entry (`et`) | `open` / `xdg-open` | `handlr` | `finicky` |
+| :--- | :---: | :---: | :---: | :---: |
+| **Scope** | Universal File/URL Launcher | System Default Opener | Default App Manager | Browser Selector |
+| **Matching Logic** | Ext, Regex, MIME, Script | Ext / MIME | Ext / MIME / Regex | URL Patterns |
+| **Configuration** | YAML + CLI Management | System GUI / Registry | TOML | JavaScript |
+| **Cross-Platform** | ✅ Linux, macOS, Windows | ❌ OS Specific | ✅ Linux, macOS | ❌ macOS only |
+| **TUI Dashboard** | ✅ Yes | ❌ No | ❌ No | ❌ No |
+| **Config Sync** | ✅ Built-in Gist Sync | ❌ No | ❌ No | ❌ No |
+
+*   **vs `open` (macOS) / `xdg-open` (Linux)**: These are system utilities that rely on global OS associations. `et` gives you granular control *on top* of or instead of these. For example, you can make `et` open `*_test.go` files in a terminal running tests, while opening normal `.go` files in your editor. `open` cannot distinguish files by regex.
+*   **vs `handlr`**: `handlr` is great for managing default applications and MIME types on Linux. `et` focuses more on being a workflow tool with features like interactive selection, dry-run, and a TUI dashboard, rather than just managing system associations.
+*   **vs `finicky`**: `finicky` is fantastic for routing URLs to specific browsers on macOS. `et` brings that same power to *local files* and works cross-platform. You can use `et` to route URLs too!
+
 ## Installation
 
 ### From Source
