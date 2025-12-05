@@ -21,12 +21,12 @@ var (
 )
 
 func init() {
-	rootCmd.Flags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/entry/config.yml)")
-	rootCmd.Flags().BoolVar(&dryRun, "dry-run", false, "print command instead of executing")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/entry/config.yml)")
+	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "print command instead of executing")
 	rootCmd.Flags().BoolVarP(&interactive, "select", "s", false, "Interactive selection")
 	rootCmd.Flags().BoolVar(&explain, "explain", false, "Show detailed matching information")
-	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
-	rootCmd.Flags().StringVarP(&profile, "profile", "p", "", "Configuration profile to use")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
+	rootCmd.PersistentFlags().StringVarP(&profile, "profile", "p", "", "Configuration profile to use")
 	rootCmd.RegisterFlagCompletionFunc("profile", CompletionProfiles)
 	
 	// Allow flags after positional arguments to be passed to the command
@@ -69,7 +69,44 @@ var rootCmd = &cobra.Command{
 	},
 	DisableFlagParsing: true,
 	Args: cobra.ArbitraryArgs,
+	// PersistentPreRunE is called for subcommands
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// If DisableFlagParsing is true (root command), we skip this because
+		// we handle it manually in RunE.
+		if cmd.DisableFlagParsing {
+			return nil
+		}
+		return initialize(cmd, args)
+	},
 	RunE: runRoot,
+}
+
+// initialize handles common setup like logging and config loading
+func initialize(cmd *cobra.Command, args []string) error {
+	// Check for profile environment variable
+	if profile == "" && os.Getenv("ENTRY_PROFILE") != "" {
+		profile = os.Getenv("ENTRY_PROFILE")
+	}
+
+	// Resolve config file path with profile
+	if cfgFile == "" && profile != "" {
+		resolvedPath, err := config.GetConfigPathWithProfile("", profile)
+		if err != nil {
+			return fmt.Errorf("failed to resolve profile config path: %w", err)
+		}
+		cfgFile = resolvedPath
+	}
+
+	// Initialize logger
+	if err := initLogger(); err != nil {
+		return fmt.Errorf("failed to initialize logger: %w", err)
+	}
+	
+	// We defer logger closing in main, not here, or we let the process exit handle it
+	// defer logger.GetGlobal().Close()
+
+	logger.Debug("Initialized with flags - verbose: %v, dryRun: %v, profile: %s, config: %s", verbose, dryRun, profile, cfgFile)
+	return nil
 }
 
 func runRoot(cmd *cobra.Command, args []string) error {
@@ -110,6 +147,9 @@ func runRoot(cmd *cobra.Command, args []string) error {
 				// Inherit output from root command
 				subCmd.SetOut(cmd.OutOrStdout())
 				subCmd.SetErr(cmd.ErrOrStderr())
+				
+				// Ensure persistent flags are parsed for subcommand
+				subCmd.ParseFlags(subArgs)
 
 				subCmd.SetArgs(subArgs)
 				return subCmd.Execute()
@@ -145,30 +185,14 @@ func runRoot(cmd *cobra.Command, args []string) error {
 			return subCmd.Execute()
 		}
 	}
-
-	// Check for profile environment variable
-	if profile == "" && os.Getenv("ENTRY_PROFILE") != "" {
-		profile = os.Getenv("ENTRY_PROFILE")
-	}
-
-	// Resolve config file path with profile
-	if cfgFile == "" && profile != "" {
-		resolvedPath, err := config.GetConfigPathWithProfile("", profile)
-		if err != nil {
-			return fmt.Errorf("failed to resolve profile config path: %w", err)
-		}
-		cfgFile = resolvedPath
-		logger.Debug("Using profile '%s' with config: %s", profile, cfgFile)
-	}
-
-	// Initialize logger
-	if err := initLogger(); err != nil {
-		return fmt.Errorf("failed to initialize logger: %w", err)
+	
+	// Manual initialization for root command since PersistentPreRunE is skipped
+	if err := initialize(cmd, args); err != nil {
+		return err
 	}
 	defer logger.GetGlobal().Close()
 
-	logger.Debug("Starting entry with args: %v", args)
-	logger.Debug("Flags - verbose: %v, dryRun: %v, interactive: %v, explain: %v, profile: %s", verbose, dryRun, interactive, explain, profile)
+	logger.Debug("Starting entry execution with args: %v", args)
 
 	cfg, err := config.LoadConfig(cfgFile)
 	if err != nil {
