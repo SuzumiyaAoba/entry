@@ -3,8 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
-	"github.com/SuzumiyaAoba/entry/internal/matcher"
+	"github.com/SuzumiyaAoba/via/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/matcher"
 	"github.com/spf13/cobra"
 )
 

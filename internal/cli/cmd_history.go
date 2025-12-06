@@ -3,8 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/SuzumiyaAoba/entry/internal/executor"
-	"github.com/SuzumiyaAoba/entry/internal/history"
+	"github.com/SuzumiyaAoba/via/internal/executor"
+	"github.com/SuzumiyaAoba/via/internal/history"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
@@ -92,5 +92,5 @@ func runHistory(cmd *cobra.Command) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Re-running: %s\n", selectedEntry.Command)
 	
 	exec := executor.NewExecutor(cmd.OutOrStdout(), false)
-	return exec.ExecuteCommand("et", []string{selectedEntry.Command})
+	return exec.ExecuteCommand("vv", []string{selectedEntry.Command})
 }

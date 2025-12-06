@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
-	. "github.com/SuzumiyaAoba/entry/internal/matcher"
+	"github.com/SuzumiyaAoba/via/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/matcher"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -90,7 +90,7 @@ var _ = Describe("Match", func() {
 
 	DescribeTable("matching files against rules",
 		func(filename string, wantCmd string, wantErr bool) {
-			got, err := Match(rules, filename)
+			got, err := matcher.Match(rules, filename)
 			if wantErr {
 				Expect(err).To(HaveOccurred())
 			} else {
@@ -125,7 +125,7 @@ var _ = Describe("Match", func() {
 			scriptRules := []config.Rule{
 				{Script: "file.endsWith('.js')", Command: "node"},
 			}
-			matches, err := Match(scriptRules, "test.js")
+			matches, err := matcher.Match(scriptRules, "test.js")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(matches).To(HaveLen(1))
 			Expect(matches[0].Command).To(Equal("node"))
@@ -135,7 +135,7 @@ var _ = Describe("Match", func() {
 			scriptRules := []config.Rule{
 				{Script: "file.endsWith('.js')", Command: "node"},
 			}
-			matches, err := Match(scriptRules, "test.txt")
+			matches, err := matcher.Match(scriptRules, "test.txt")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(matches).To(BeEmpty())
 		})
@@ -144,7 +144,7 @@ var _ = Describe("Match", func() {
 			scriptRules := []config.Rule{
 				{Script: "invalid syntax )))", Command: "node"},
 			}
-			_, err := Match(scriptRules, "test.js")
+			_, err := matcher.Match(scriptRules, "test.js")
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -155,7 +155,7 @@ var _ = Describe("Match", func() {
 				{Extensions: []string{"txt"}, Command: "cmd1"},
 				{Extensions: []string{"txt"}, Command: "cmd2"},
 			}
-			matches, err := MatchAll(multiRules, "file.txt")
+			matches, err := matcher.MatchAll(multiRules, "file.txt")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(matches).To(HaveLen(2))
 			Expect(matches[0].Command).To(Equal("cmd1"))
@@ -174,7 +174,7 @@ var _ = Describe("Match", func() {
 				{Extensions: []string{"txt"}, Command: "cmd1", Fallthrough: true},
 				{Extensions: []string{"txt"}, Command: "cmd2"},
 			}
-			matches, err := Match(ftRules, "file.txt")
+			matches, err := matcher.Match(ftRules, "file.txt")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(matches).To(HaveLen(2))
 		})
@@ -185,7 +185,7 @@ var _ = Describe("Match", func() {
 			badRules := []config.Rule{
 				{Regex: "["},
 			}
-			_, err := Match(badRules, "file.txt")
+			_, err := matcher.Match(badRules, "file.txt")
 			Expect(err).To(HaveOccurred())
 		})
 	})

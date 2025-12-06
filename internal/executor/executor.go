@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"text/template"
 
-	"github.com/SuzumiyaAoba/entry/internal/history"
+	"github.com/SuzumiyaAoba/via/internal/history"
 	"github.com/dop251/goja"
 )
 

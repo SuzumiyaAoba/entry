@@ -3,8 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
-	"github.com/SuzumiyaAoba/entry/internal/tui"
+	"github.com/SuzumiyaAoba/via/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )

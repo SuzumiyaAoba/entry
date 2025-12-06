@@ -1,4 +1,4 @@
-module github.com/SuzumiyaAoba/entry
+module github.com/SuzumiyaAoba/via
 
 go 1.25.2
 

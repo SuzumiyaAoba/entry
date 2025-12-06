@@ -88,10 +88,10 @@ func GetConfigPathWithProfile(path string, profile string) (string, error) {
 	}
 
 	if profile == "" {
-		return filepath.Join(home, ".config", "entry", "config.yml"), nil
+		return filepath.Join(home, ".config", "via", "config.yml"), nil
 	}
 
-	return filepath.Join(home, ".config", "entry", "profiles", profile+".yml"), nil
+	return filepath.Join(home, ".config", "via", "profiles", profile+".yml"), nil
 }
 
 func SaveConfig(path string, cfg *Config) error {

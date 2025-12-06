@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
-	"github.com/SuzumiyaAoba/entry/internal/tui"
+	"github.com/SuzumiyaAoba/via/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

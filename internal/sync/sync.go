@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/config"
 	"github.com/go-resty/resty/v2"
 	"gopkg.in/yaml.v3"
 )

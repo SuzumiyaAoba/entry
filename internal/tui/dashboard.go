@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
-	"github.com/SuzumiyaAoba/entry/internal/history"
+	"github.com/SuzumiyaAoba/via/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/history"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"

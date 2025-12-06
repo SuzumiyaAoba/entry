@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
-	"github.com/SuzumiyaAoba/entry/internal/sync"
+	"github.com/SuzumiyaAoba/via/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/sync"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )

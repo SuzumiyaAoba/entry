@@ -3,7 +3,7 @@ package cli
 import (
 	"os"
 
-	"github.com/SuzumiyaAoba/entry/internal/logger"
+	"github.com/SuzumiyaAoba/via/internal/logger"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

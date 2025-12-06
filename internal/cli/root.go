@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
-	"github.com/SuzumiyaAoba/entry/internal/executor"
-	"github.com/SuzumiyaAoba/entry/internal/logger"
+	"github.com/SuzumiyaAoba/via/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/executor"
+	"github.com/SuzumiyaAoba/via/internal/logger"
 	"github.com/spf13/cobra"
 )
 

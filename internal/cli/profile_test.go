@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/config"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -27,7 +27,7 @@ var _ = Describe("Profile commands", func() {
 		os.Setenv("HOME", tmpDir)
 
 		// Create config dir
-		configDir := filepath.Join(tmpDir, ".config", "entry")
+		configDir := filepath.Join(tmpDir, ".config", "via")
 		err := os.MkdirAll(configDir, 0755)
 		Expect(err).NotTo(HaveOccurred())
 

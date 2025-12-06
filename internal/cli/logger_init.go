@@ -3,7 +3,7 @@ package cli
 import (
 	"os"
 
-	"github.com/SuzumiyaAoba/entry/internal/logger"
+	"github.com/SuzumiyaAoba/via/internal/logger"
 )
 
 // initLogger initializes the global logger based on flags and environment variables

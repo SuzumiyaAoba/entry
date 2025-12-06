@@ -131,7 +131,7 @@ default: "vim {{.File}}"
 
 			path, err := GetConfigPathWithProfile("", "")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(path).To(Equal(filepath.Join("/home/user", ".config", "entry", "config.yml")))
+			Expect(path).To(Equal(filepath.Join("/home/user", ".config", "via", "config.yml")))
 		})
 
 		It("should return profile path", func() {
@@ -142,7 +142,7 @@ default: "vim {{.File}}"
 
 			path, err := GetConfigPathWithProfile("", "dev")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(path).To(Equal(filepath.Join("/home/user", ".config", "entry", "profiles", "dev.yml")))
+			Expect(path).To(Equal(filepath.Join("/home/user", ".config", "via", "profiles", "dev.yml")))
 		})
 	})
 

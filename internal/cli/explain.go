@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/config"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/spf13/cobra"

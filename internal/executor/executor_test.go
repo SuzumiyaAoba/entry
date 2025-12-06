@@ -3,7 +3,7 @@ package executor_test
 import (
 	"testing"
 
-	. "github.com/SuzumiyaAoba/entry/internal/executor"
+	. "github.com/SuzumiyaAoba/via/internal/executor"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

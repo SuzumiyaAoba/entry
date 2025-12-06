@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
-	"github.com/SuzumiyaAoba/entry/internal/executor"
+	"github.com/SuzumiyaAoba/via/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/executor"
 	"github.com/charmbracelet/huh"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"

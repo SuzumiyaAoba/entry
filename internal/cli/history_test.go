@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SuzumiyaAoba/entry/internal/history"
+	"github.com/SuzumiyaAoba/via/internal/history"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

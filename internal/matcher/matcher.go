@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/config"
 	"github.com/dop251/goja"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/samber/lo"

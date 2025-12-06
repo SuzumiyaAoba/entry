@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SuzumiyaAoba/entry/internal/config"
+	"github.com/SuzumiyaAoba/via/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ func runConfigProfileList(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to get user home dir: %w", err)
 	}
 
-	profilesDir := filepath.Join(home, ".config", "entry", "profiles")
+	profilesDir := filepath.Join(home, ".config", "via", "profiles")
 	
 	// Check if profiles directory exists
 	if _, err := os.Stat(profilesDir); os.IsNotExist(err) {
