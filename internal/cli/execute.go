@@ -53,6 +53,7 @@ func executeRule(exec *executor.Executor, rule *config.Rule, filename string) (b
 	opts := executor.ExecutionOptions{
 		Background: rule.Background,
 		Terminal:   rule.Terminal,
+		Env:        rule.Env,
 	}
 	if err := exec.Execute(command, filename, opts); err != nil {
 		return true, err

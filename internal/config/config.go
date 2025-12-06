@@ -20,8 +20,9 @@ type Rule struct {
 	Background  bool     `yaml:"background,omitempty"`
 	Terminal    bool     `yaml:"terminal,omitempty"`
 	Fallthrough bool     `yaml:"fallthrough,omitempty"`
-	Command     string   `yaml:"command,omitempty" validate:"required"`
-	Script      string   `yaml:"script,omitempty"` // JavaScript code
+	Command     string            `yaml:"command,omitempty" validate:"required"`
+	Script      string            `yaml:"script,omitempty"` // JavaScript code
+	Env         map[string]string `yaml:"env,omitempty"`    // Environment variables
 }
 
 type Config struct {

@@ -27,6 +27,7 @@ type CommandData struct {
 type ExecutionOptions struct {
 	Background bool
 	Terminal   bool
+	Env        map[string]string
 }
 
 type Executor struct {
@@ -77,12 +78,28 @@ func (e *Executor) Execute(commandTmpl string, file string, opts ExecutionOption
 		if opts.Background {
 			bg = " (background)"
 		}
-		fmt.Fprintf(e.Out, "%s%s\n", cmdStr, bg)
+		envStr := ""
+		if len(opts.Env) > 0 {
+			var parts []string
+			for k, v := range opts.Env {
+				parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+			}
+			envStr = fmt.Sprintf(" [%s]", strings.Join(parts, ", "))
+		}
+		fmt.Fprintf(e.Out, "%s%s%s\n", cmdStr, bg, envStr)
 		return nil
 	}
 
 	cmd := exec.Command("sh", "-c", cmdStr)
 	
+	// Apply environment variables
+	if len(opts.Env) > 0 {
+		cmd.Env = os.Environ()
+		for k, v := range opts.Env {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+
 	if opts.Background {
 		// Detach process
 		cmd.Stdin = nil

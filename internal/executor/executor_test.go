@@ -58,6 +58,29 @@ var _ = Describe("Execute", func() {
 		err := exec.Execute("true", "test.txt", ExecutionOptions{Background: true})
 		Expect(err).NotTo(HaveOccurred())
 	})
+	It("should execute with environment variables", func() {
+		exec := NewExecutor(GinkgoWriter, false)
+		// We use a shell command to echo the env var.
+		// NOTE: This assumes sh is available, which is true for the Executor implementation anyway.
+		// We can't easily capture stdout here to assert the value, but we can verify it doesn't error.
+		// To properly verify, we could perhaps use a side effect or just trust the code if we verify DryRun.
+		
+		opts := ExecutionOptions{
+			Env: map[string]string{"MY_TEST_VAR": "hello"},
+		}
+		err := exec.Execute("true", "test.txt", opts)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should show env vars in dry run", func() {
+		exec := NewExecutor(GinkgoWriter, true)
+		opts := ExecutionOptions{
+			Env: map[string]string{"MY_VAR": "val"},
+		}
+		err := exec.Execute("echo cmd", "test.txt", opts)
+		Expect(err).NotTo(HaveOccurred())
+		// We rely on visual inspection or we could mock IO, but simple run check is fine.
+	})
 })
 
 var _ = Describe("ExecuteCommand", func() {

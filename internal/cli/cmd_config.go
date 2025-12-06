@@ -61,6 +61,7 @@ func init() {
 	configAddCmd.Flags().Bool("background", false, "Run in background")
 	configAddCmd.Flags().Bool("fallthrough", false, "Continue matching other rules")
 	configAddCmd.Flags().StringSlice("os", nil, "OS constraints (e.g. darwin, linux)")
+	configAddCmd.Flags().StringSlice("env", nil, "Environment variables (KEY=VALUE)")
 	configAddCmd.Flags().String("script", "", "JavaScript condition/command")
 	configAddCmd.MarkFlagRequired("cmd")
 
@@ -123,6 +124,7 @@ func runConfigAdd(cmd *cobra.Command, args []string) error {
 	background, _ := cmd.Flags().GetBool("background")
 	isFallthrough, _ := cmd.Flags().GetBool("fallthrough")
 	osList, _ := cmd.Flags().GetStringSlice("os")
+	envList, _ := cmd.Flags().GetStringSlice("env")
 	script, _ := cmd.Flags().GetString("script")
 
 	if command == "" {
@@ -156,6 +158,7 @@ func runConfigAdd(cmd *cobra.Command, args []string) error {
 		Background:  background,
 		Fallthrough: isFallthrough,
 		OS:          osList,
+		Env:         parseEnvList(envList),
 		Script:      script,
 	}
 
@@ -323,6 +326,7 @@ func runConfigEdit(cmd *cobra.Command) error {
 		terminal    = rule.Terminal
 		isFallthrough = rule.Fallthrough
 		osList      = strings.Join(rule.OS, ",")
+		envList     = formatEnvMap(rule.Env)
 		script      = rule.Script
 	)
 
@@ -375,6 +379,11 @@ func runConfigEdit(cmd *cobra.Command) error {
 				Description("Comma-separated list of OS (e.g., darwin,linux)").
 				Value(&osList),
 
+			huh.NewInput().
+				Title("Env Vars").
+				Description("Environment variables (KEY=VAL,KEY2=VAL2)").
+				Value(&envList),
+
 			huh.NewConfirm().
 				Title("Background").
 				Description("Run command in background?").
@@ -418,7 +427,9 @@ func runConfigEdit(cmd *cobra.Command) error {
 	rule.Background = background
 	rule.Terminal = terminal
 	rule.Fallthrough = isFallthrough
+	rule.Fallthrough = isFallthrough
 	rule.OS = splitAndTrim(osList)
+	rule.Env = parseEnvString(envList)
 	rule.Script = script
 
 	// Save config
@@ -453,4 +464,38 @@ func splitAndTrim(s string) []string {
 		trimmed := strings.TrimSpace(part)
 		return trimmed, trimmed != ""
 	})
+}
+
+func parseEnvList(list []string) map[string]string {
+	if len(list) == 0 {
+		return nil
+	}
+	env := make(map[string]string)
+	for _, item := range list {
+		parts := strings.SplitN(item, "=", 2)
+		if len(parts) == 2 {
+			env[parts[0]] = parts[1]
+		}
+	}
+	return env
+}
+
+func parseEnvString(s string) map[string]string {
+	if s == "" {
+		return nil
+	}
+	// Split by comma, respecting quotes would be better but simple comma split for now consistent with OS list
+	list := splitAndTrim(s)
+	return parseEnvList(list)
+}
+
+func formatEnvMap(env map[string]string) string {
+	if len(env) == 0 {
+		return ""
+	}
+	var parts []string
+	for k, v := range env {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(parts, ",")
 }
