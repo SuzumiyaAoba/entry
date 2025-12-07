@@ -98,7 +98,8 @@ var _ = Describe("Profile commands", func() {
 
 	Describe("runConfigProfileCopy", func() {
 		It("should copy profile", func() {
-			err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "profile-copy", "default", "newprofile"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "profile-copy", "default", "newprofile"})
+			err := rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Profile 'default' copied to 'newprofile'"))
 
@@ -116,14 +117,16 @@ var _ = Describe("Profile commands", func() {
 			err = os.WriteFile(srcProfile, []byte("version: '1'"), 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "profile-copy", "source", "dest"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "profile-copy", "source", "dest"})
+			err = rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Profile 'source' copied to 'dest'"))
 			Expect(fileExists(filepath.Join(profilesDir, "dest.yml"))).To(BeTrue())
 		})
 
 		It("should fail if source profile does not exist", func() {
-			err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "profile-copy", "nonexistent", "dest"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "profile-copy", "nonexistent", "dest"})
+			err := rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("source profile 'nonexistent' does not exist"))
 		})
@@ -138,7 +141,8 @@ var _ = Describe("Profile commands", func() {
 			err = os.WriteFile(targetProfile, []byte{}, 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "profile-copy", "default", "existing"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "profile-copy", "default", "existing"})
+			err = rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("target profile 'existing' already exists"))
 		})

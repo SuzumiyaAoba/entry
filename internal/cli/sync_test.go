@@ -32,7 +32,8 @@ var _ = Describe("Sync command", func() {
 
 	Describe("runConfigSyncPush", func() {
 		It("should fail if sync not initialized", func() {
-			err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "push"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "sync", "push"})
+			err := rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("sync not initialized"))
 		})
@@ -51,7 +52,8 @@ var _ = Describe("Sync command", func() {
 			// Ensure env var is unset
 			os.Unsetenv("ENTRY_GITHUB_TOKEN")
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "push"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "sync", "push"})
+			err = rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("token not found"))
 		})
@@ -64,7 +66,8 @@ var _ = Describe("Sync command", func() {
 			err := config.SaveConfig(cfgFile, cfg)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "pull"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "sync", "pull"})
+			err = rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("sync not initialized"))
 		})
@@ -82,7 +85,8 @@ var _ = Describe("Sync command", func() {
 			// Ensure env var is unset
 			os.Unsetenv("ENTRY_GITHUB_TOKEN")
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "push"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "sync", "push"})
+			err = rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("token not found"))
 		})
@@ -98,7 +102,8 @@ var _ = Describe("Sync command", func() {
 			err := config.SaveConfig(cfgFile, cfg)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "pull"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "sync", "pull"})
+			err = rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -123,7 +128,8 @@ var _ = Describe("Sync command", func() {
 			err := os.WriteFile(cfgFile, []byte("["), 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = runConfigSyncInit(rootCmd)
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "sync", "init"})
+			err = rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -143,7 +149,8 @@ var _ = Describe("Sync command", func() {
 				return &mockSyncClient{}
 			}
 
-			err := runConfigSyncInit(rootCmd)
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "sync", "init"})
+			err := rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Sync initialized successfully"))
 
@@ -173,7 +180,8 @@ var _ = Describe("Sync command", func() {
 				}
 			}
 
-			err := runConfigSyncInit(rootCmd)
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "sync", "init"})
+			err := rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Created new Gist: new-gist-id"))
 			Expect(outBuf.String()).To(ContainSubstring("Token not stored"))

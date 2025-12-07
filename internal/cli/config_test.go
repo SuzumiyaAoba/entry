@@ -218,7 +218,8 @@ rules:
 		})
 
 		It("should remove a rule by index", func() {
-			err := runConfigRemove(rootCmd, "1")
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "remove", "1"})
+			err := rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Rule removed successfully"))
 
@@ -230,19 +231,22 @@ rules:
 		})
 
 		It("should return error for invalid index format", func() {
-			err := runConfigRemove(rootCmd, "invalid")
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "remove", "invalid"})
+			err := rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("invalid index"))
 		})
 
 		It("should return error for index out of range", func() {
-			err := runConfigRemove(rootCmd, "3")
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "remove", "3"})
+			err := rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("index out of range"))
 		})
 
 		It("should return error for index 0", func() {
-			err := runConfigRemove(rootCmd, "0")
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "remove", "0"})
+			err := rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("index out of range"))
 		})
@@ -297,7 +301,8 @@ rules:
 
 		It("should move rule", func() {
 			// Move Rule 3 (index 3) to index 1
-			err := runConfigMove(rootCmd, 3, 1)
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "move", "3", "1"})
+			err := rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 
 			cfg, err := config.LoadConfig(configFile)
@@ -308,7 +313,8 @@ rules:
 		})
 
 		It("should return error for invalid index", func() {
-			err := runConfigMove(rootCmd, 99, 1)
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "move", "99", "1"})
+			err := rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -493,7 +499,8 @@ rules:
 			err := config.SaveConfig(cfgFile, cfg)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "push"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "sync", "push"})
+			err = rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Configuration pushed to Gist"))
 		})
@@ -509,7 +516,8 @@ rules:
 			err := config.SaveConfig(cfgFile, cfg)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "sync", "pull"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "sync", "pull"})
+			err = rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Configuration pulled from Gist"))
 		})
@@ -520,7 +528,8 @@ rules:
 			err := config.SaveConfig(cfgFile, cfg)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "check"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "check"})
+			err = rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Configuration is valid"))
 		})
@@ -531,7 +540,8 @@ rules:
 			err := config.SaveConfig(cfgFile, cfg)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "set-default", "vim {{.File}}"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "set-default", "vim {{.File}}"})
+			err = rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Default command updated"))
 
@@ -553,7 +563,8 @@ rules:
 			err := config.SaveConfig(cfgFile, cfg)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "remove", "1"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "remove", "1"})
+			err = rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Rule removed"))
 
@@ -570,7 +581,8 @@ rules:
 			err := config.SaveConfig(cfgFile, cfg)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "remove", "99"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "remove", "99"})
+			err = rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("index out of range"))
 		})
@@ -579,7 +591,8 @@ rules:
 			// Remove config file
 			os.Remove(cfgFile)
 
-			err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "init"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "init"})
+			err := rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Created default config"))
 
@@ -594,7 +607,8 @@ rules:
 			err := config.SaveConfig(cfgFile, cfg)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "init"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "init"})
+			err = rootCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("already exists"))
 		})
@@ -610,7 +624,8 @@ rules:
 			err := config.SaveConfig(cfgFile, cfg)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "list"})
+			rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "list"})
+			err = rootCmd.Execute()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(outBuf.String()).To(ContainSubstring("Rule 1"))
 			Expect(outBuf.String()).To(ContainSubstring("cmd1"))

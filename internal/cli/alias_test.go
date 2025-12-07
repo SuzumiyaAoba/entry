@@ -31,7 +31,8 @@ var _ = Describe("Alias command", func() {
 	})
 
 	It("should add alias", func() {
-		err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "alias", "add", "ll", "ls -la"})
+		rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "alias", "add", "ll", "ls -la"})
+		err := rootCmd.Execute()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(outBuf.String()).To(ContainSubstring("Alias 'll' added"))
 
@@ -50,7 +51,8 @@ var _ = Describe("Alias command", func() {
 		err := config.SaveConfig(cfgFile, cfg)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "alias", "remove", "ll"})
+		rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "alias", "remove", "ll"})
+		err = rootCmd.Execute()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(outBuf.String()).To(ContainSubstring("Alias 'll' removed"))
 
@@ -61,7 +63,8 @@ var _ = Describe("Alias command", func() {
 	})
 
 	It("should fail if alias does not exist", func() {
-		err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "alias", "remove", "nonexistent"})
+		rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "alias", "remove", "nonexistent"})
+		err := rootCmd.Execute()
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("alias 'nonexistent' not found"))
 	})
@@ -72,7 +75,8 @@ var _ = Describe("Alias command", func() {
 		err := config.SaveConfig(cfgFile, cfg)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "alias", "remove", "foo"})
+		rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "alias", "remove", "foo"})
+		err = rootCmd.Execute()
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("alias 'foo' not found"))
 	})
@@ -89,7 +93,8 @@ var _ = Describe("Alias command", func() {
 		err := config.SaveConfig(cfgFile, cfg)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "alias", "list"})
+		rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "alias", "list"})
+		err = rootCmd.Execute()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(outBuf.String()).To(ContainSubstring("Aliases:"))
 		Expect(outBuf.String()).To(ContainSubstring("ll: ls -la"))
@@ -97,7 +102,8 @@ var _ = Describe("Alias command", func() {
 	})
 
 	It("should show message when no aliases exist", func() {
-		err := rootCmd.RunE(rootCmd, []string{"--config", cfgFile, ":config", "alias", "list"})
+		rootCmd.SetArgs([]string{"--config", cfgFile, ":config", "alias", "list"})
+		err := rootCmd.Execute()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(outBuf.String()).To(ContainSubstring("No aliases defined"))
 	})

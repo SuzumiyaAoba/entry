@@ -19,6 +19,6 @@ var _ = Describe("Version command", func() {
 		rootCmd.SetArgs([]string{":version"})
 		err := rootCmd.Execute()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(outBuf.String()).To(ContainSubstring("et dev"))
+		Expect(outBuf.String()).To(ContainSubstring("vv dev"))
 	})
 })

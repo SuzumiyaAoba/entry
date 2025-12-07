@@ -11,6 +11,8 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+
+	"github.com/SuzumiyaAoba/via/internal/utils"
 )
 
 var configCmd = &cobra.Command{
@@ -158,12 +160,12 @@ func runConfigAdd(cmd *cobra.Command, args []string) error {
 		Background:  background,
 		Fallthrough: isFallthrough,
 		OS:          osList,
-		Env:         parseEnvList(envList),
+		Env:         utils.ParseEnvList(envList),
 		Script:      script,
 	}
 
 	if ext != "" {
-		rule.Extensions = splitAndTrim(ext)
+		rule.Extensions = utils.SplitAndTrim(ext)
 	}
 
 	cfg.Rules = append(cfg.Rules, rule)
@@ -326,7 +328,7 @@ func runConfigEdit(cmd *cobra.Command) error {
 		terminal    = rule.Terminal
 		isFallthrough = rule.Fallthrough
 		osList      = strings.Join(rule.OS, ",")
-		envList     = formatEnvMap(rule.Env)
+		envList     = utils.FormatEnvMap(rule.Env)
 		script      = rule.Script
 	)
 
@@ -419,7 +421,7 @@ func runConfigEdit(cmd *cobra.Command) error {
 
 	// Update the rule
 	rule.Name = name
-	rule.Extensions = splitAndTrim(extensions)
+	rule.Extensions = utils.SplitAndTrim(extensions)
 	rule.Regex = regex
 	rule.Mime = mime
 	rule.Scheme = scheme
@@ -427,9 +429,8 @@ func runConfigEdit(cmd *cobra.Command) error {
 	rule.Background = background
 	rule.Terminal = terminal
 	rule.Fallthrough = isFallthrough
-	rule.Fallthrough = isFallthrough
-	rule.OS = splitAndTrim(osList)
-	rule.Env = parseEnvString(envList)
+	rule.OS = utils.SplitAndTrim(osList)
+	rule.Env = utils.ParseEnvString(envList)
 	rule.Script = script
 
 	// Save config
@@ -455,47 +456,4 @@ func buildRuleLabel(rule *config.Rule) string {
 	return fmt.Sprintf("Command: %s", rule.Command)
 }
 
-// splitAndTrim splits a comma-separated string and trims whitespace
-func splitAndTrim(s string) []string {
-	if s == "" {
-		return nil
-	}
-	return lo.FilterMap(strings.Split(s, ","), func(part string, _ int) (string, bool) {
-		trimmed := strings.TrimSpace(part)
-		return trimmed, trimmed != ""
-	})
-}
 
-func parseEnvList(list []string) map[string]string {
-	if len(list) == 0 {
-		return nil
-	}
-	env := make(map[string]string)
-	for _, item := range list {
-		parts := strings.SplitN(item, "=", 2)
-		if len(parts) == 2 {
-			env[parts[0]] = parts[1]
-		}
-	}
-	return env
-}
-
-func parseEnvString(s string) map[string]string {
-	if s == "" {
-		return nil
-	}
-	// Split by comma, respecting quotes would be better but simple comma split for now consistent with OS list
-	list := splitAndTrim(s)
-	return parseEnvList(list)
-}
-
-func formatEnvMap(env map[string]string) string {
-	if len(env) == 0 {
-		return ""
-	}
-	var parts []string
-	for k, v := range env {
-		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
-	}
-	return strings.Join(parts, ",")
-}
