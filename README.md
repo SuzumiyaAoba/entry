@@ -6,44 +6,28 @@ Instead of remembering different commands for every file type (`cat`, `open`, `v
 
 ## Features
 
-### 🧠 Smart Execution
--   **Extension Matching**: Map `.pdf` to your PDF reader, `.md` to your editor.
--   **Regex Matching**: Match filenames like `.*_test.go` to run tests.
--   **MIME Type Matching**: Handle files based on content type (e.g., `image/.*`).
--   **URL Scheme Matching**: Open `https://` or `ftp://` links with specific browsers or tools.
--   **JavaScript Scripting**: Use JavaScript for complex matching logic and dynamic command generation.
-
-### 🔄 Remote Sync
--   **Gist Sync**: Synchronize your configuration across machines using GitHub Gists.
--   **Backup & Restore**: Easily backup your rules and restore them anywhere.
-
-### ⚡ Power User Tools
--   **TUI Dashboard**: Manage rules, view history, and sync status in a unified terminal interface.
--   **Interactive Mode**: Ambiguous match? Select the right rule from a beautiful TUI.
--   **Dry Run**: Preview exactly what command will run without executing it.
--   **Explain Mode**: Debug your configuration by seeing exactly why a rule matched (or didn't).
-
-### 🛠️ Configuration
--   **Profiles**: Switch contexts easily (e.g., `work` vs `personal` configs).
--   **Interactive Editor**: Manage your rules without leaving the terminal.
--   **YAML Config**: Simple, human-readable configuration file.
+- **Smart Execution**: Execute commands based on file extensions, regex patterns, MIME types, or URL schemes.
+- **Advanced Matching**: Support for JavaScript scripting for complex matching logic.
+- **Remote Sync**: Synchronize configuration using GitHub Gists.
+- **TUI Dashboard**: Manage rules, view history, and check sync status in a unified terminal interface.
+- **Interactive Mode**: Resolve ambiguous matches by selecting rules interactively.
+- **Dry Run & Explain**: Preview commands and debug rule matching logic.
+- **Profiles**: Switch between different configuration contexts (e.g., work vs. personal).
 
 ## Comparison
-
-Why use `et` over other tools?
 
 | Feature | Via (`vv`) | `open` / `xdg-open` | `handlr` | `finicky` |
 | :--- | :---: | :---: | :---: | :---: |
 | **Scope** | Universal File/URL Launcher | System Default Opener | Default App Manager | Browser Selector |
 | **Matching Logic** | Ext, Regex, MIME, Script | Ext / MIME | Ext / MIME / Regex | URL Patterns |
 | **Configuration** | YAML + CLI Management | System GUI / Registry | TOML | JavaScript |
-| **Cross-Platform** | ✅ Linux, macOS, Windows | ❌ OS Specific | ✅ Linux, macOS | ❌ macOS only |
-| **TUI Dashboard** | ✅ Yes | ❌ No | ❌ No | ❌ No |
-| **Config Sync** | ✅ Built-in Gist Sync | ❌ No | ❌ No | ❌ No |
+| **Cross-Platform** | Linux, macOS, Windows | OS Specific | Linux, macOS | macOS only |
+| **TUI Dashboard** | Yes | No | No | No |
+| **Config Sync** | Built-in Gist Sync | No | No | No |
 
-*   **vs `open` (macOS) / `xdg-open` (Linux)**: These are system utilities that rely on global OS associations. `vv` gives you granular control *on top* of or instead of these. For example, you can make `vv` open `*_test.go` files in a terminal running tests, while opening normal `.go` files in your editor. `open` cannot distinguish files by regex.
-*   **vs `handlr`**: `handlr` is great for managing default applications and MIME types on Linux. `vv` focuses more on being a workflow tool with features like interactive selection, dry-run, and a TUI dashboard, rather than just managing system associations.
-*   **vs `finicky`**: `finicky` is fantastic for routing URLs to specific browsers on macOS. `vv` brings that same power to *local files* and works cross-platform. You can use `vv` to route URLs too!
+*   **vs `open` / `xdg-open`**: `vv` provides granular control on top of system defaults, allowing regex-based matching (e.g., opening `*_test.go` differently from `.go`).
+*   **vs `handlr`**: `vv` includes workflow features like interactive selection, dry-run, and a TUI dashboard.
+*   **vs `finicky`**: `vv` applies similar routing concepts to local files and works cross-platform.
 
 ## Installation
 
